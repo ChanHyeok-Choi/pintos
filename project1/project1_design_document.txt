@@ -8,8 +8,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-Dongyeon Yu <dy3199@unist.ac.kr>
-Changmin Seo <seomin@unist.ac.kr>
+Jungmin Park <jm971004@unist.ac.kr>
+Chanhyeok Choi <chan4184@unist.ac.kr>
 
 
 ---- PRELIMINARIES ----
