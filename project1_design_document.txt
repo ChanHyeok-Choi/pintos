@@ -3,14 +3,14 @@
       | PROJECT 1: THREADS |
       |   DESIGN DOCUMENT  |
       +--------------------+
-           
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
 
-Dongyeon Yu <dy3199@unist.ac.kr>
-Changmin Seo <seomin@unist.ac.kr>
-
+FirstName LastName <email@domain.example>
+FirstName LastName <email@domain.example>
+FirstName LastName <email@domain.example>
 
 ---- PRELIMINARIES ----
 
@@ -30,66 +30,18 @@ Changmin Seo <seomin@unist.ac.kr>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-struct thread
-{
-  ...
-  /* Arbitary Defined Variable */
-  int64_t sleep_ticks;
-};
->> When timer_sleep(int64_t ticks) is called, it is recorded in the TCB when thread should unblocked based on the ticks in timer.c.
-
-
-static struct list sleep_list;
-
->> Block state TCBs with valid sleep_ticks are stored in linked list format.
-TCBs in the list will continuously be compared to the static variable, min_ticks.
-
-
-static int64_t min_ticks = INT64_MAX;
-
->> Variable commonly used to manage TCBs in sleep_list.
-Since int64_MAX is very large, we excluded situation as timer_sleep(int64_MAX) being called.
-
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
-When the timer_sleep() function is called, it is evident that the CPU is in the INTR_ON state.
-After updating the sleep_ticks in the TCB, it should be in INTR_OFF state for pushing current TCB to sleep_list
-and applying thread_unblock(). If not preventing context switch during these works, TCB and sleep_list 
-can be unpredictable.
-
-After that, timer_sleep() restores the interrupt state of the CPU as before timer_sleep() is called.
-
-timer_interrupt() is being called as TIMER_FREQ per second according to the timer_init() function.
-All TCBs in sleep_list must be compared to min_sleep_ticks in this function, since the number of times 
-timer_interrupt() being called is the standard of ticks in timer.c
-
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
-
-Instead of iterating the sleep_list to unblock the sleeping thread which is needed to be waken up every moment 
-the timer_interrupt() being called, through the implementing the boolean-type function that min_tick_time_over() in timer.c, 
-it is possible to do the same works only when the ticks of timer.c is equal or greater than min_ticks.
-
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
-
-To avoid busy wait, we made sleep_list for storing sleeping threads and min_ticks
-for tracing the minimal tick to wake up sleeping threads in sleeping_list.
-
-The reason why we chose this design is that we thought sleeping thread
-doesn't need to be allocated to CPU so it's better way to move sleeping thread
-from ready_list to sleeping_list until it need to be woken up. And to avoid
-tracing sleeping_list to wake up the sleeping_thread every tick, we
-made minimal ticks(min_ticks). We only search sleeping_list when timer_ticks is
-bigger than min_ticks so we can avoid time cost for searching whether there exists
-sleeping thread to wake up in every ticks.
-
 
        PRIORITY SCHEDULING
        ===================
@@ -100,74 +52,10 @@ sleeping thread to wake up in every ticks.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-No additional declaration.
-
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
-
-To implement priority schedule, we firstly designed as when schedule() function is called, 
-it explores ready_queue and find the most highest_priority thread and then do the context switching but in this case,
-it takes O(n) when finding the most highest_priority thread in ready_list.
-
-However, if the ready_list is in the order of the priority it only takes O(1) when schedule() function is called to do the
-context switching. Then we need to insert thread in ready_list with priority order. Inserting with priority order in ready_list
-takes n/2 complexity on average. So it is better way to maintain ready_list in priority order.
-
-Thus we decided to implement priority schedule to maintain the ready_list is sorted in priority order. So in our design, 
-the ready_list's front has the highest priority thread.
-
-        ADVANCED SCHEDULER
-        ==================
-
----- DATA STRUCTURES ----
-
->> C1: Copy here the declaration of each new or changed `struct' or
->> `struct' member, global or static variable, `typedef', or
->> enumeration.  Identify the purpose of each in 25 words or less.
-
----- ALGORITHMS ----
-
->> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
->> has a recent_cpu value of 0.  Fill in the table below showing the
->> scheduling decision and the priority and recent_cpu values for each
->> thread after each given number of timer ticks:
-
-timer  recent_cpu    priority   thread
-ticks   A   B   C   A   B   C   to run
------  --  --  --  --  --  --   ------
- 0
- 4
- 8
-12
-16
-20
-24
-28
-32
-36
-
->> C3: Did any ambiguities in the scheduler specification make values
->> in the table uncertain?  If so, what rule did you use to resolve
->> them?  Does this match the behavior of your scheduler?
-
->> C4: How is the way you divided the cost of scheduling between code
->> inside and outside interrupt context likely to affect performance?
-
----- RATIONALE ----
-
->> C5: Briefly critique your design, pointing out advantages and
->> disadvantages in your design choices.  If you were to have extra
->> time to work on this part of the project, how might you choose to
->> refine or improve your design?
-
->> C6: The assignment explains arithmetic for fixed-point math in
->> detail, but it leaves it open to you to implement it.  Why did you
->> decide to implement it the way you did?  If you created an
->> abstraction layer for fixed-point math, that is, an abstract data
->> type and/or a set of functions or macros to manipulate fixed-point
->> numbers, why did you do so?  If not, why not?
 
          SURVEY QUESTIONS
          ================
