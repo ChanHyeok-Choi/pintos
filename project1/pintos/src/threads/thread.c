@@ -351,11 +351,24 @@ void thread_sleep (int64_t ticks) {
    is zero first, wake the thread up. */
 void thread_wake_up (int64_t ticks) {
   struct thread *head = list_begin(&sleep_list);
+  struct thread *next = head;
   enum intr_level old_level;
 
   ASSERT (!intr_context ());
   old_level = intr_disable ();
   /* iterate sleep_list. */
+  while (next != list_tail(&sleep_list)) {
+    if (next->sleep_ticks == 0) {
+      /* If there is a variable for storing the least sleep_ticks
+         whenver sleep_ticks is checked, it would be more efficient. */
+      if (next->sleep_ticks >= ticks) {
+        swap(next, list_tail(&sleep_list));
+        /* Pop_back and make sure to put it into ready_list, then change
+           the state to THREAD_READY. */
+      }
+    }
+    next = list_next(next);
+  }
   intr_set_level (old_level);
 }
 
