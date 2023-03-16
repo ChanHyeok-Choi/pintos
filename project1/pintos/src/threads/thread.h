@@ -129,6 +129,9 @@ void thread_yield (void);
 
 /* Add a function that makes a thread to be a sleep state. */
 void thread_sleep (int64_t ticks);
+/* Add a function that iterates sleep_list and wake up a thread 
+   with least sleep_ticks.*/
+void thread_wake_up (int64_t ticks);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

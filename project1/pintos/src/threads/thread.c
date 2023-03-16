@@ -347,6 +347,18 @@ void thread_sleep (int64_t ticks) {
   intr_set_level (old_level);
 }
 
+/* Iterate the sleep_list at each timer tick. And if thread's sleep_ticks
+   is zero first, wake the thread up. */
+void thread_wake_up (int64_t ticks) {
+  struct thread *head = list_begin(&sleep_list);
+  enum intr_level old_level;
+
+  ASSERT (!intr_context ());
+  old_level = intr_disable ();
+  /* iterate sleep_list. */
+  intr_set_level (old_level);
+}
+
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void

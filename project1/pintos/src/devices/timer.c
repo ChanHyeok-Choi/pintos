@@ -176,6 +176,12 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  /* We have to check sleep_list for thread to be waken up. So, check
+     the least sleep_ticks among threads in sleep_list, since the thread
+     with least sleep_ticks will be waken up most earily. Therefore, we
+     need to iterate the sleep_list and wake up a thread if it satisfies
+     a condition. */
+  
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
