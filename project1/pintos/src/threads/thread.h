@@ -92,6 +92,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    int64_t sleep_ticks;                /* Remained ticks for sleeping. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -127,7 +128,7 @@ void thread_exit (void) NO_RETURN;
 void thread_yield (void);
 
 /* Add a function that makes a thread to be a sleep state. */
-void thread_sleep (void);
+void thread_sleep (int64_t ticks);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

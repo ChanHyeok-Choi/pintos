@@ -97,7 +97,7 @@ timer_sleep (int64_t ticks)
      will blow away this while loop. */
   // while (timer_elapsed (start) < ticks) 
   //   thread_yield (); 
-  
+  thread_sleep (ticks);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be

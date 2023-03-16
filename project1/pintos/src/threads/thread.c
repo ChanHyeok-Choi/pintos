@@ -329,15 +329,22 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
-/* Put the current thread into sleep_list in order to avoid
-   busy waiting. */
-void thread_sleep (void) {
+/* Make the thread sleep for approximately TICKS timer ticks. 
+   Then, put the current thread into sleep_list in order to 
+   avoid busy waiting.*/
+void thread_sleep (int64_t ticks) {
   struct thread *cur = thread_current ();
   enum intr_level old_level;
   
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
+  if (cur != idle_thread) 
+    list_push_back (&sleep_list, &cur->elem);
+  cur->status = THREAD_BLOCKED; // Wait for event
+  cur->sleep_ticks = ticks;
+  // schedule();
+  intr_set_level (old_level);
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
