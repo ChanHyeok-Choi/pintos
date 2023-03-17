@@ -355,7 +355,7 @@ void thread_wake_up (int64_t ticks) {
   struct thread *thread_to_ready_list;
   enum intr_level old_level;
 
-  ASSERT (!intr_context ());
+  // ASSERT (!intr_context ());
   old_level = intr_disable ();
   /* iterate sleep_list. */
   while (next != list_tail(&sleep_list)) {
@@ -372,22 +372,25 @@ void thread_wake_up (int64_t ticks) {
         /* We need to update least_sleep_tick one time. */
         update_least_sleep_tick();
       }
+    } else {
+      next = list_next(next);
     }
-    next = list_next(next);
   }
   intr_set_level (old_level);
 }
 
 /* Update the least tick in sleep_list to least_sleep_tick. */
 void update_least_sleep_tick (void) {
-  struct thread *min = list_begin (&sleep_list);
-  int64_t min_tick = min->sleep_ticks;
+  struct list_elem *min = list_begin (&sleep_list);
+  struct thread *min_thread = list_entry(min, struct thread, elem);
+  int64_t min_tick = min_thread->sleep_ticks;
   if (min != list_end (&sleep_list)) {
-    struct thread *tmp;
+    struct list_elem *tmp;
 
     for (tmp = list_next (min); tmp != list_end (&sleep_list); tmp = list_next (tmp)) {
-      if (tmp->sleep_ticks < min_tick) {
-        min_tick = tmp->sleep_ticks;
+      struct thread *tmp_thread = list_entry(tmp, struct thread, elem);
+      if (tmp_thread->sleep_ticks < min_tick) {
+        min_tick = tmp_thread->sleep_ticks;
       }
     }
   }
