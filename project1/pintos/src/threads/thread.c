@@ -57,7 +57,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
-static unsigned least_sleep_tick; /* The most least tick of threads in sleep_list. */
+static int64_t least_sleep_tick; /* The most least tick of threads in sleep_list. */
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -360,7 +360,7 @@ void thread_wake_up (int64_t ticks) {
   old_level = intr_disable ();
   /* iterate sleep_list. */
   while (next != list_tail(&sleep_list)) {
-    if (next->sleep_ticks <= least_sleep_tick) {
+    if (next->sleep_ticks <= get_least_sleep_tick()) {
       /* If there is a variable for storing the least sleep_ticks
          whenver sleep_ticks is checked, it would be more efficient. */
       if (next->sleep_ticks >= ticks) {
@@ -371,11 +371,20 @@ void thread_wake_up (int64_t ticks) {
         list_push_back(&ready_list, thread_to_ready_list);
         thread_to_ready_list->status = THREAD_READY;
         /* We need to update least_sleep_tick one time. */
+        update_least_sleep_tick();
       }
     }
     next = list_next(next);
   }
   intr_set_level (old_level);
+}
+/* Update the least tick in sleep_list to least_sleep_tick. */
+void update_least_sleep_tick () {
+
+}
+/* Return least_sleep_tick. */
+int64_t get_least_sleep_tick (void) {
+  return least_sleep_tick;
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.

@@ -181,6 +181,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
      with least sleep_ticks will be waken up most earily. Therefore, we
      need to iterate the sleep_list and wake up a thread if it satisfies
      a condition. */
+  /* How to deal with ticks? In short, what ticks should we pass into
+     thread_wake_up function? */
   thread_wake_up(ticks);
 }
 

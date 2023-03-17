@@ -132,6 +132,10 @@ void thread_sleep (int64_t ticks);
 /* Add a function that iterates sleep_list and wake up a thread 
    with least sleep_ticks.*/
 void thread_wake_up (int64_t ticks);
+/* Add a function that updates a global variable 'least_sleep_tick'. */
+void update_least_sleep_tick ();
+/* Add a function that returns least_sleep_tick. */
+void get_least_sleep_tick();
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
