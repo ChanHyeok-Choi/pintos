@@ -354,7 +354,7 @@ void thread_wake_up (int64_t ticks) {
   struct thread *head = list_begin(&sleep_list);
   struct thread *next = head;
   struct thread *thread_to_ready_list;
-  struct list_elem e;
+  struct list_elem *e;
   enum intr_level old_level;
 
   ASSERT (!intr_context ());
@@ -364,20 +364,24 @@ void thread_wake_up (int64_t ticks) {
     if (next->sleep_ticks <= get_least_sleep_tick()) {
       /* If there is a variable for storing the least sleep_ticks
          whenver sleep_ticks is checked, it would be more efficient. */
-      if (next->sleep_ticks >= ticks) {
-        swap(next, list_tail(&sleep_list));
+      if (next->sleep_ticks <= ticks) {
+        // swap(next, list_tail(&sleep_list));
         /* Pop_back and make sure to put it into ready_list, then change
            the state to THREAD_READY. */
         // thread_to_ready_list = list_pop_back(&sleep_list);
         // thread_to_ready_list->status = THREAD_READY;
         // list_push_back(&ready_list, thread_to_ready_list);
-        thread_to_ready_list = list_entry(e, &sleep_list, list_elem);
+        e = list_remove(&sleep_list);
+        thread_to_ready_list = list_entry(e, struct thread, elem);
+        thread_to_ready_list->status = THREAD_READY;
+        list_push_back(&ready_list, &thread_to_ready_list->elem);
         /* We need to update least_sleep_tick one time. */
         update_least_sleep_tick();
       }
     }
     next = list_next(next);
   }
+  // schedule();
   intr_set_level (old_level);
 }
 
