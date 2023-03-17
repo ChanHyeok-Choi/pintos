@@ -344,60 +344,54 @@ void thread_sleep (int64_t ticks) {
     list_push_back (&sleep_list, &cur->elem);
   cur->status = THREAD_BLOCKED; // Wait for event
   cur->sleep_ticks = ticks;
-  // schedule();
   intr_set_level (old_level);
 }
 
 /* Iterate the sleep_list at each timer tick. And if thread's sleep_ticks
    is zero first, wake the thread up. */
 void thread_wake_up (int64_t ticks) {
-  struct thread *head = list_begin(&sleep_list);
-  struct thread *next = head;
+  struct list_elem *head = list_begin(&sleep_list);
+  struct list_elem *next = head;
   struct thread *thread_to_ready_list;
-  struct list_elem *e;
   enum intr_level old_level;
 
   ASSERT (!intr_context ());
   old_level = intr_disable ();
   /* iterate sleep_list. */
   while (next != list_tail(&sleep_list)) {
-    if (next->sleep_ticks <= get_least_sleep_tick()) {
+    thread_to_ready_list = list_entry(next, struct thread, elem);
+    if (thread_to_ready_list->sleep_ticks <= get_least_sleep_tick()) {
       /* If there is a variable for storing the least sleep_ticks
          whenver sleep_ticks is checked, it would be more efficient. */
-      if (next->sleep_ticks <= ticks) {
-        // swap(next, list_tail(&sleep_list));
+      if (thread_to_ready_list->sleep_ticks <= ticks) {
         /* Pop_back and make sure to put it into ready_list, then change
            the state to THREAD_READY. */
-        // thread_to_ready_list = list_pop_back(&sleep_list);
-        // thread_to_ready_list->status = THREAD_READY;
-        // list_push_back(&ready_list, thread_to_ready_list);
-        e = list_remove(&sleep_list);
-        thread_to_ready_list = list_entry(e, struct thread, elem);
-        thread_to_ready_list->status = THREAD_READY;
+        next = list_remove(next);
         list_push_back(&ready_list, &thread_to_ready_list->elem);
+        thread_to_ready_list->status = THREAD_READY;
         /* We need to update least_sleep_tick one time. */
         update_least_sleep_tick();
       }
     }
     next = list_next(next);
   }
-  // schedule();
   intr_set_level (old_level);
 }
 
 /* Update the least tick in sleep_list to least_sleep_tick. */
 void update_least_sleep_tick (void) {
   struct thread *min = list_begin (&sleep_list);
+  int64_t min_tick = min->sleep_ticks;
   if (min != list_end (&sleep_list)) {
     struct thread *tmp;
 
     for (tmp = list_next (min); tmp != list_end (&sleep_list); tmp = list_next (tmp)) {
-      if (tmp->sleep_ticks < min->sleep_ticks) {
-        min = tmp;
+      if (tmp->sleep_ticks < min_tick) {
+        min_tick = tmp->sleep_ticks;
       }
     }
   }
-  least_sleep_tick = min;
+  least_sleep_tick = min_tick;
 }
 /* Return least_sleep_tick. */
 int64_t get_least_sleep_tick (void) {
