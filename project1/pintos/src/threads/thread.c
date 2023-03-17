@@ -57,7 +57,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
-static int64_t least_sleep_tick; /* The most least tick of threads in sleep_list. */
+int64_t least_sleep_tick = INT64_MAX; /* The most least tick of threads in sleep_list. */
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -354,6 +354,7 @@ void thread_wake_up (int64_t ticks) {
   struct thread *head = list_begin(&sleep_list);
   struct thread *next = head;
   struct thread *thread_to_ready_list;
+  struct list_elem e;
   enum intr_level old_level;
 
   ASSERT (!intr_context ());
@@ -367,9 +368,10 @@ void thread_wake_up (int64_t ticks) {
         swap(next, list_tail(&sleep_list));
         /* Pop_back and make sure to put it into ready_list, then change
            the state to THREAD_READY. */
-        thread_to_ready_list = list_pop_back(&sleep_list);
-        list_push_back(&ready_list, thread_to_ready_list);
-        thread_to_ready_list->status = THREAD_READY;
+        // thread_to_ready_list = list_pop_back(&sleep_list);
+        // thread_to_ready_list->status = THREAD_READY;
+        // list_push_back(&ready_list, thread_to_ready_list);
+        thread_to_ready_list = list_entry(e, &sleep_list, list_elem);
         /* We need to update least_sleep_tick one time. */
         update_least_sleep_tick();
       }
