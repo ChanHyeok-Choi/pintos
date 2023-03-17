@@ -277,7 +277,9 @@ thread_current (void)
      of stack, so a few big automatic arrays or moderate
      recursion can cause stack overflow. */
   ASSERT (is_thread (t));
+  // printf("A");
   ASSERT (t->status == THREAD_RUNNING);
+  // printf("B");
 
   return t;
 }
@@ -340,10 +342,10 @@ void thread_sleep (int64_t ticks) {
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&sleep_list, &cur->elem);
+  list_push_back (&sleep_list, &cur->elem);
   cur->status = THREAD_BLOCKED; // Wait for event
   cur->sleep_ticks = ticks;
+  schedule();
   intr_set_level (old_level);
 }
 
@@ -369,13 +371,16 @@ void thread_wake_up (int64_t ticks) {
         next = list_remove(next);
         list_push_back(&ready_list, &thread_to_ready_list->elem);
         thread_to_ready_list->status = THREAD_READY;
-        /* We need to update least_sleep_tick one time. */
+        /* We need to update least_sleep_tick one-time. */
         update_least_sleep_tick();
+      } else {
+        next = list_next(next);
       }
     } else {
       next = list_next(next);
     }
   }
+  // schedule();
   intr_set_level (old_level);
 }
 
