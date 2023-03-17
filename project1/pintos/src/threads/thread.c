@@ -378,9 +378,20 @@ void thread_wake_up (int64_t ticks) {
   }
   intr_set_level (old_level);
 }
-/* Update the least tick in sleep_list to least_sleep_tick. */
-void update_least_sleep_tick () {
 
+/* Update the least tick in sleep_list to least_sleep_tick. */
+void update_least_sleep_tick (void) {
+  struct thread *min = list_begin (&sleep_list);
+  if (min != list_end (&sleep_list)) {
+    struct thread *tmp;
+
+    for (tmp = list_next (min); tmp != list_end (&sleep_list); tmp = list_next (tmp)) {
+      if (tmp->sleep_ticks < min->sleep_ticks) {
+        min = tmp;
+      }
+    }
+  }
+  least_sleep_tick = min;
 }
 /* Return least_sleep_tick. */
 int64_t get_least_sleep_tick (void) {
