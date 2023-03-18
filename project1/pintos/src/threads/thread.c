@@ -233,6 +233,14 @@ bool compare_priority (const struct list_elem *a, const struct list_elem *b, voi
   return A->priority < B->priority;
 }
 
+/* by using compare_priority ...*/
+void currrent_list_compare_priority(void){
+  struct thread *max_priority_thread = list_head(&ready_list);
+  if(compare_priority(thread_current, max_priority_thread, NULL )){
+    thread_yield();
+  }
+}
+
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -257,6 +265,9 @@ incoming cases:
 1) brand new thread
 2) block->unblock thread
 
+instead of reorder ready list(with some threads in it), every threads that coming inside ready list can handled by insert order
+which is already implemented function in list.c (list_insert_ordered()).
+To do so, change push -> list_insert_ordered to ready list.
 */
 
 /* Transitions a blocked thread T to the ready-to-run state.
