@@ -342,7 +342,10 @@ void thread_sleep (int64_t ticks) {
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
+  /* We need a sorting algorithm so that when thread is put into
+     sleep_list, the list should be sorted. */
   list_push_back (&sleep_list, &cur->elem);
+  // list_sort(&sleep_list, less_than_sleep_tick, void);
   cur->status = THREAD_BLOCKED; // Wait for event
   cur->sleep_ticks = ticks;
   schedule();
