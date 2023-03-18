@@ -267,6 +267,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
+  /* When the thread is unblocked, ready_list should be sorted by priority of thread. */
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -383,7 +384,7 @@ void thread_wake_up (int64_t ticks) {
   enum intr_level old_level;
 
   // ASSERT (!intr_context ());
-  old_level = intr_disable ();
+  // old_level = intr_disable ();
   /* iterate sleep_list. */
   while (next != list_tail(&sleep_list)) {
     thread_to_ready_list = list_entry(next, struct thread, elem);
@@ -394,8 +395,10 @@ void thread_wake_up (int64_t ticks) {
         /* Pop_back and make sure to put it into ready_list, then change
            the state to THREAD_READY. */
         next = list_remove(next);
-        list_push_back(&ready_list, &thread_to_ready_list->elem);
-        thread_to_ready_list->status = THREAD_READY;
+        /* We change direct access unblock to using thread_unblock(). */
+        thread_unblock(thread_to_ready_list);
+        // list_push_back(&ready_list, &thread_to_ready_list->elem);
+        // thread_to_ready_list->status = THREAD_READY;
         /* We need to update least_sleep_tick one-time. */
         update_least_sleep_tick();
       } else {
@@ -406,7 +409,7 @@ void thread_wake_up (int64_t ticks) {
     }
   }
   // schedule();
-  intr_set_level (old_level);
+  // intr_set_level (old_level);
 }
 
 /* Update the least tick in sleep_list to least_sleep_tick. */
