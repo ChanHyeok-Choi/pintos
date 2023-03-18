@@ -215,6 +215,12 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* After thread_unblock, we should check piroritiy of the current thread,
+     and compare between it and the new thread. If the new thread has higher
+     priority, yield CPU. */
+  if (thread_current()->priority < t->priority)
+    thread_yield();
+
   return tid;
 }
 
@@ -333,11 +339,11 @@ thread_yield (void)
 }
 
 
-bool less_than_sleep_tick (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
-  struct thread *A = list_entry (a, struct thread, elem);
-  struct thread *B = list_entry (b, struct thread, elem);
-  return A->sleep_ticks < B->sleep_ticks;
-}
+// bool less_than_sleep_tick (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+//   struct thread *A = list_entry (a, struct thread, elem);
+//   struct thread *B = list_entry (b, struct thread, elem);
+//   return A->sleep_ticks < B->sleep_ticks;
+// }
 
 /* Make the thread sleep for approximately TICKS timer ticks. 
    Then, put the current thread into sleep_list in order to 
@@ -349,8 +355,6 @@ void thread_sleep (int64_t ticks) {
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  /* We need a sorting algorithm so that when thread is put into
-     sleep_list, the list should be sorted. */
   cur->sleep_ticks = ticks;
   // list_insert_ordered(&sleep_list, &cur->elem, &less_than_sleep_tick, NULL);
   list_push_back (&sleep_list, &cur->elem);
