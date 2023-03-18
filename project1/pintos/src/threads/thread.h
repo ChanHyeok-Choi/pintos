@@ -136,6 +136,10 @@ void thread_wake_up (int64_t ticks);
 void update_least_sleep_tick (void);
 /* Add a function that returns least_sleep_tick. */
 int64_t get_least_sleep_tick (void);
+/* Add a function that compares sleep_ticks between threads instead of list_less_func. */
+bool less_than_sleep_tick (const struct list_elem *a, 
+                           const struct list_elem *b, 
+                           void *aux UNUSED);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

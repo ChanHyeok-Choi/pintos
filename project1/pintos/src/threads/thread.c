@@ -332,6 +332,13 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
+
+bool less_than_sleep_tick (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  struct thread *A = list_entry (a, struct thread, elem);
+  struct thread *B = list_entry (b, struct thread, elem);
+  return A->sleep_ticks < B->sleep_ticks;
+}
+
 /* Make the thread sleep for approximately TICKS timer ticks. 
    Then, put the current thread into sleep_list in order to 
    avoid busy waiting.*/
@@ -344,10 +351,11 @@ void thread_sleep (int64_t ticks) {
   old_level = intr_disable ();
   /* We need a sorting algorithm so that when thread is put into
      sleep_list, the list should be sorted. */
-  list_push_back (&sleep_list, &cur->elem);
-  // list_sort(&sleep_list, less_than_sleep_tick, void);
-  cur->status = THREAD_BLOCKED; // Wait for event
   cur->sleep_ticks = ticks;
+  // list_insert_ordered(&sleep_list, &cur->elem, &less_than_sleep_tick, NULL);
+  list_push_back (&sleep_list, &cur->elem);
+  // list_sort(&sleep_list, &less_than_sleep_tick, NULL);
+  cur->status = THREAD_BLOCKED; // Wait for event
   schedule();
   intr_set_level (old_level);
 }
