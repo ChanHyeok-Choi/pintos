@@ -224,6 +224,15 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
+/* Comparison function by priority of threads, which returns TRUE if a's thread priority
+   is lower than b's, else FALSE. */
+bool compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  struct thread *A = list_entry (a, struct thread, elem);
+  struct thread *B = list_entry (b, struct thread, elem);
+  
+  return A->priority < B->priority;
+}
+
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -353,6 +362,7 @@ thread_yield (void)
 // bool less_than_sleep_tick (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
 //   struct thread *A = list_entry (a, struct thread, elem);
 //   struct thread *B = list_entry (b, struct thread, elem);
+//
 //   return A->sleep_ticks < B->sleep_ticks;
 // }
 
