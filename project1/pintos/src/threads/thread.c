@@ -381,7 +381,7 @@ void thread_wake_up (int64_t ticks) {
   struct list_elem *head = list_begin(&sleep_list);
   struct list_elem *next = head;
   struct thread *thread_to_ready_list;
-  enum intr_level old_level;
+  // enum intr_level old_level;
 
   // ASSERT (!intr_context ());
   // old_level = intr_disable ();
