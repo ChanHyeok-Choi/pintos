@@ -240,6 +240,16 @@ thread_block (void)
   schedule ();
 }
 
+/*
+basic idea for change round-robin to priority:
+at ready list, all incoming thread have to ordered by priority
+
+incoming cases:
+1) brand new thread
+2) block->unblock thread
+
+*/
+
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
    make the running thread ready.)
