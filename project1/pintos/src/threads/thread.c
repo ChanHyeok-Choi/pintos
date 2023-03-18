@@ -29,7 +29,7 @@ static struct list ready_list;
 static struct list all_list;
 
 /* List of processes in thread_sleep state instaed of ready_list,
-   that is, processes that are sleeping when timer_sleep() is called. */
+   that is, processes that will be sleeping when timer_sleep() is called. */
 static struct list sleep_list;
 
 /* Idle thread. */
@@ -367,7 +367,7 @@ thread_yield (void)
   if (cur != idle_thread)
     /* Also, we'd change list_push_back to list_insert_sorted at this part. */
     // list_push_back (&ready_list, &cur->elem);
-    list_insert_ordered(&ready_list, &cur->priority, &compare_priority, NULL);
+    list_insert_ordered(&ready_list, &cur->elem, &compare_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -433,7 +433,6 @@ void thread_wake_up (int64_t ticks) {
       next = list_next(next);
     }
   }
-  // schedule();
   // intr_set_level (old_level);
 }
 
