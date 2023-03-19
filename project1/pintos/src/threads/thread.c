@@ -230,7 +230,7 @@ bool compare_priority (const struct list_elem *a, const struct list_elem *b, voi
   struct thread *A = list_entry (a, struct thread, elem);
   struct thread *B = list_entry (b, struct thread, elem);
   
-  return A->priority < B->priority;
+  return A->priority > B->priority;
 }
 
 /* by using compare_priority ...*/
