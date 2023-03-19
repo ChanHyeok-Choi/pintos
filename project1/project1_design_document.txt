@@ -94,10 +94,39 @@ amount of time for looking around threads in sleep_list to wake up each tick.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+There are no such new or changed data structures.
+
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+We've got three design options for change from round robin scheduling to priority scheduling.
+
+1. Search the thread with the highest priority in the ready_list whenever context switching happens.
+2. Priority sorting of threads in ready_list whenever a new thread is pushed to the end of the ready_list
+3. When add thread into ready_list (new thread, unblock, yield), 
+	insert in priority order instead of push. (adopted design)
+
+The third design was adopted because of these reasons:
+1. The design method 1 can be divided into two cases. In both cases, there are some problems.
+	1) If we search for the highest priority each time at context switching, 
+	   the average waiting time increases in proportion to the number of threads in ready_list.
+	2) Similar to the alarm clock, even if the thread with the highest priority is stored before context switching,
+	   if the search time is longer than the processing time of the current thread, the waiting time can still increases.
+2. Comparing design method 2, It was easier to perform list_insert_ordered() function that is already implemented in list.c
+   rather than push threads all the time, creating new insertion sorting function and use it.
+3. By using design method 3, since ready_list only need to pass the thread in list head,
+   this design have a significant time advantage in context switching.
+
+While using design method 3, we need to consider the situation that thread_set_priority() changes 
+the current_thread's priority since there are some chance of priority reverse 
+between current_thread and threads in ready_list.
+For this situation, we added current_list_compare_priority() at thread_set_priority() to yield for that case.
+
+
+
+
 
          SURVEY QUESTIONS
          ================

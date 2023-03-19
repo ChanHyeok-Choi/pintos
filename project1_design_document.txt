@@ -4,6 +4,10 @@
       |   DESIGN DOCUMENT  |
       +--------------------+
 
+
+IMPORTANT: Our team wrote the design document AT team_2/project1/project1_design_document.txt , NOT HERE!
+
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
