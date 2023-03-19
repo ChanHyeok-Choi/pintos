@@ -235,8 +235,8 @@ bool compare_priority (const struct list_elem *a, const struct list_elem *b, voi
 
 /* by using compare_priority ...*/
 void currrent_list_compare_priority(void){
-  struct thread *max_priority_thread = list_head(&ready_list);
-  if(compare_priority(thread_current, max_priority_thread, NULL )){
+  const struct list_elem *max_priority_thread_elem = list_head(&ready_list);
+  if (compare_priority(&thread_current()->elem, max_priority_thread_elem, NULL )){
     thread_yield();
   }
 }
@@ -480,6 +480,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  currrent_list_compare_priority();
 }
 
 /* Returns the current thread's priority. */
