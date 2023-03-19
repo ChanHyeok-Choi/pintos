@@ -237,8 +237,10 @@ bool compare_priority (const struct list_elem *a, const struct list_elem *b, voi
    If one of threads in ready_list has higher priority than current thread, current thread yields.*/
 void currrent_list_compare_priority(void){
   const struct list_elem *max_priority_thread_elem = list_head(&ready_list);
-  if (compare_priority(&thread_current()->elem, max_priority_thread_elem, NULL )){
-    thread_yield();
+  if(!list_empty(&ready_list)){
+  	if (compare_priority(&thread_current()->elem, max_priority_thread_elem, NULL )){
+	    thread_yield();
+	}
   }
 }
 
