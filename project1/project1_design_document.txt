@@ -39,9 +39,6 @@ struct thread {
    that is, processes that will be sleeping when timer_sleep() is called.
 static struct list sleep_list;
 
-3. A global variable to store the most least tick of threads in sleep_list.
-int64_t least_sleep_tick = INT64_MAX;
-
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
@@ -59,19 +56,18 @@ can be unpredictable.
 
 timer_interrupt() is being called as TIMER_FREQ times per second by timer_init() function.
 Then, thread_wake_up() is being called by timer_interrupt() function. And then,
-all sleeping threads' sleep_ticks in sleep_list will be compared with least_sleep_tick that
-is returned by get_least_sleep_tick() function. We applied while loop for iterating all elements.
-If there is a sleeping thread to be waken up, remove it from sleep_list and push it into
-ready_list by using thread_unblock() function. After then, update least_sleep_tick with using
-update_least_sleep_tick() function we defined.
+all sleeping threads' sleep_ticks in sleep_list will be compared with ticks that
+is from timer_ticks(). We applied while loop for iterating all elements, and added a particular
+condition to avoid the amount of time waste. If there is a sleeping thread to be waken up, 
+remove it from sleep_list and push it into ready_list by unblocking thread.
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
 
 To prevent all process in sleep_list from being compared with ticks to be waken up
-each time timer_interrupt being called, we define least_sleep_tick and update it if
-sleep_list is changed. Because the wake up mechanism will work only when thread's sleep_ticks 
-is equal to or less than least_sleep_tick and equal to or less than ticks passed from timer_interrupt(), 
+each time timer_interrupt being called, we define least_than_sleep_tick() function and use
+it whenever thread to sleep is pushed into sleep_list. Because the wake up mechanism will 
+work only when a thread's sleep_ticks is equal to or less than ticks passed from timer_interrupt(), 
 it is possible to reduce loads doing the same tasks.
 
 ---- RATIONALE ----
@@ -84,9 +80,9 @@ for storing sleeping threads and defined least_sleep_ticks for tracing the least
 to wake up sleeping threads in sleep_list.
 
 In short, the reason why we chose this design is that sleeping thread doesn't need
-to be yield to CPU and passed to ready_list. So, we made sleep_list and least_sleep_ticks
+to be yield to CPU and passed to ready_list. So, we made sleep_list and less_than_sleep_tick()
 to avoid tracing sleep_list to wake up the sleeping thread every tick. Then, we only check
-whether thread's sleep_ticks is equal to or less than least_sleep_tick, which reduces the 
+whether thread's sleep_ticks is equal to or less than ticks, which reduces the 
 amount of time for looking around threads in sleep_list to wake up each tick.
 
        PRIORITY SCHEDULING

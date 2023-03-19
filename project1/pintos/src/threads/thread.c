@@ -57,7 +57,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
-int64_t least_sleep_tick = INT64_MAX; /* The most least tick of threads in sleep_list. */
+// int64_t least_sleep_tick = INT64_MAX; /* The most least tick of threads in sleep_list. */
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -375,12 +375,12 @@ thread_yield (void)
 }
 
 
-// bool less_than_sleep_tick (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
-//   struct thread *A = list_entry (a, struct thread, elem);
-//   struct thread *B = list_entry (b, struct thread, elem);
-//
-//   return A->sleep_ticks < B->sleep_ticks;
-// }
+bool less_than_sleep_tick (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  struct thread *A = list_entry (a, struct thread, elem);
+  struct thread *B = list_entry (b, struct thread, elem);
+
+  return A->sleep_ticks < B->sleep_ticks;
+}
 
 /* Make the thread sleep for approximately TICKS timer ticks. 
    Then, put the current thread into sleep_list in order to 
@@ -395,7 +395,7 @@ void thread_sleep (int64_t ticks) {
   cur->sleep_ticks = ticks;
   // list_insert_ordered(&sleep_list, &cur->elem, &less_than_sleep_tick, NULL);
   list_push_back (&sleep_list, &cur->elem);
-  // list_sort(&sleep_list, &less_than_sleep_tick, NULL);
+  list_sort(&sleep_list, &less_than_sleep_tick, NULL);
   cur->status = THREAD_BLOCKED; // Wait for event
   schedule();
   intr_set_level (old_level);
@@ -413,49 +413,61 @@ void thread_wake_up (int64_t ticks) {
   /* iterate sleep_list. */
   while (next != list_tail(&sleep_list)) {
     thread_to_ready_list = list_entry(next, struct thread, elem);
-    if (thread_to_ready_list->sleep_ticks <= get_least_sleep_tick()) {
-      /* If there is a variable for storing the least sleep_ticks
-         whenver sleep_ticks is checked, it would be more efficient. */
-      if (thread_to_ready_list->sleep_ticks <= ticks) {
-        /* Pop_back and make sure to put it into ready_list, then change
-           the state to THREAD_READY. */
-        next = list_remove(next);
-        /* We change direct access unblock to using thread_unblock(). */
-        list_insert_ordered(&ready_list, &thread_to_ready_list->elem, &compare_priority, NULL);
-        thread_to_ready_list->status = THREAD_READY;
-        /* We need to update least_sleep_tick one-time. */
-        update_least_sleep_tick();
-      } else {
-        next = list_next(next);
-      }
+    /* There's a problem of time cost, because all elements of sleep_list is compared
+       with least_sleep_tick. So, if a thread to sleep is put into sleep_list by sorting
+       algorithm, then we don't need least_sleep_tick anymore and just use list_inserted_orderd
+       with less_than_sleep_tick we defined.
+       Insert-ordered is IMPORTANT!!!!!*/
+    if (thread_to_ready_list->sleep_ticks <= ticks) {
+      next = list_remove(next);
+      list_insert_ordered(&ready_list, &thread_to_ready_list->elem, &compare_priority, NULL);
+      thread_to_ready_list->status = THREAD_READY;
     } else {
-      next = list_next(next);
+      break;
     }
+    // if (thread_to_ready_list->sleep_ticks <= get_least_sleep_tick()) {
+    //   /* If there is a variable for storing the least sleep_ticks
+    //      whenver sleep_ticks is checked, it would be more efficient. */
+    //   if (thread_to_ready_list->sleep_ticks <= ticks) {
+    //     /* Pop_back and make sure to put it into ready_list, then change
+    //        the state to THREAD_READY. */
+    //     next = list_remove(next);
+    //     /* We change direct access unblock to using thread_unblock(). */
+    //     list_insert_ordered(&ready_list, &thread_to_ready_list->elem, &compare_priority, NULL);
+    //     thread_to_ready_list->status = THREAD_READY;
+    //     /* We need to update least_sleep_tick one-time. */
+    //     update_least_sleep_tick();
+    //   } else {
+    //     next = list_next(next);
+    //   }
+    // } else {
+    //   next = list_next(next);
+    // }
   }
   intr_set_level (old_level);
 }
 
 /* Update the least tick in sleep_list to least_sleep_tick. */
-void update_least_sleep_tick (void) {
-  struct list_elem *min = list_begin (&sleep_list);
-  struct thread *min_thread = list_entry(min, struct thread, elem);
-  int64_t min_tick = min_thread->sleep_ticks;
-  if (min != list_end (&sleep_list)) {
-    struct list_elem *tmp;
+// void update_least_sleep_tick (void) {
+//   struct list_elem *min = list_begin (&sleep_list);
+//   struct thread *min_thread = list_entry(min, struct thread, elem);
+//   int64_t min_tick = min_thread->sleep_ticks;
+//   if (min != list_end (&sleep_list)) {
+//     struct list_elem *tmp;
 
-    for (tmp = list_next (min); tmp != list_end (&sleep_list); tmp = list_next (tmp)) {
-      struct thread *tmp_thread = list_entry(tmp, struct thread, elem);
-      if (tmp_thread->sleep_ticks < min_tick) {
-        min_tick = tmp_thread->sleep_ticks;
-      }
-    }
-  }
-  least_sleep_tick = min_tick;
-}
-/* Return least_sleep_tick. */
-int64_t get_least_sleep_tick (void) {
-  return least_sleep_tick;
-}
+//     for (tmp = list_next (min); tmp != list_end (&sleep_list); tmp = list_next (tmp)) {
+//       struct thread *tmp_thread = list_entry(tmp, struct thread, elem);
+//       if (tmp_thread->sleep_ticks < min_tick) {
+//         min_tick = tmp_thread->sleep_ticks;
+//       }
+//     }
+//   }
+//   least_sleep_tick = min_tick;
+// }
+// /* Return least_sleep_tick. */
+// int64_t get_least_sleep_tick (void) {
+//   return least_sleep_tick;
+// }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
