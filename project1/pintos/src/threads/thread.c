@@ -225,7 +225,7 @@ thread_create (const char *name, int priority,
 }
 
 /* Comparison function by priority of threads, which returns TRUE if a's thread priority
-   is lower than b's, else FALSE. */
+   is higher than b's, else FALSE. */
 bool compare_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
   struct thread *A = list_entry (a, struct thread, elem);
   struct thread *B = list_entry (b, struct thread, elem);
@@ -233,7 +233,8 @@ bool compare_priority (const struct list_elem *a, const struct list_elem *b, voi
   return A->priority > B->priority;
 }
 
-/* by using compare_priority ...*/
+/* Priority comparison function for current thread versus threads in ready_list by using compare_priority.
+   If one of threads in ready_list has higher priority than current thread, current thread yields.*/
 void currrent_list_compare_priority(void){
   const struct list_elem *max_priority_thread_elem = list_head(&ready_list);
   if (compare_priority(&thread_current()->elem, max_priority_thread_elem, NULL )){
