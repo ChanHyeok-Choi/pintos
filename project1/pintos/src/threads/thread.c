@@ -407,10 +407,9 @@ void thread_wake_up (int64_t ticks) {
   struct list_elem *head = list_begin(&sleep_list);
   struct list_elem *next = head;
   struct thread *thread_to_ready_list;
-  // enum intr_level old_level;
+  enum intr_level old_level;
 
-  // ASSERT (!intr_context ());
-  // old_level = intr_disable ();
+  old_level = intr_disable ();
   /* iterate sleep_list. */
   while (next != list_tail(&sleep_list)) {
     thread_to_ready_list = list_entry(next, struct thread, elem);
@@ -422,9 +421,8 @@ void thread_wake_up (int64_t ticks) {
            the state to THREAD_READY. */
         next = list_remove(next);
         /* We change direct access unblock to using thread_unblock(). */
-        thread_unblock(thread_to_ready_list);
-        // list_push_back(&ready_list, &thread_to_ready_list->elem);
-        // thread_to_ready_list->status = THREAD_READY;
+        list_insert_ordered(&ready_list, &thread_to_ready_list->elem, &compare_priority, NULL);
+        thread_to_ready_list->status = THREAD_READY;
         /* We need to update least_sleep_tick one-time. */
         update_least_sleep_tick();
       } else {
@@ -434,7 +432,7 @@ void thread_wake_up (int64_t ticks) {
       next = list_next(next);
     }
   }
-  // intr_set_level (old_level);
+  intr_set_level (old_level);
 }
 
 /* Update the least tick in sleep_list to least_sleep_tick. */
