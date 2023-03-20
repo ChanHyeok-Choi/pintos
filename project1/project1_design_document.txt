@@ -143,6 +143,8 @@ the quarter.
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
 
+Yeah, we could get insight for scheduling and thread management machanism.
+
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
