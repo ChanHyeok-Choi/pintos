@@ -41,10 +41,12 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /* Parsing file_name in order to pass the first token of it into thread_create(). */
   char s[] = file_name;
   char *first_token, *save_ptr;
 
   first_token = strtok_r(s, " ", &save_ptr);
+  // printf("'%s'\n", first_token);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
@@ -58,6 +60,8 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+  /* Problem: Here had the same problem as not parsed file_name. */
+  /* Solution: It needs to tokenize file_name and save each token into user stack (memory). */
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
