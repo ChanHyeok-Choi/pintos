@@ -28,6 +28,8 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+  /* main() -> run_action() -> run_task() -> ifdef USERPROG -> HERE!*/
+  /* Problem: This function could not parse arguments of file_name. */
   char *fn_copy;
   tid_t tid;
 
@@ -88,6 +90,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  /* Gotta! */
   return -1;
 }
 
