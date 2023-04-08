@@ -42,8 +42,8 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Parsing file_name in order to pass the first token of it into thread_create(). */
-  char s[] = file_name;
-  char *first_token, *save_ptr;
+  char *s; s = palloc_get_page (0); strlcpy(s, file_name, PGSIZE);
+  char *first_token, *save_ptr; // first token would be file_name.
 
   first_token = strtok_r(s, " ", &save_ptr);
   // printf("'%s'\n", first_token);
@@ -55,6 +55,11 @@ process_execute (const char *file_name)
   return tid;
 }
 
+/* 80x86 Calling Convetion: 
+    When function is called, arguments would be saved in order (right -> left). 
+    Return address would be next instruction address of Caller. 
+    Return value of Callee should be saved into the eax register. */
+
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -65,6 +70,15 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+
+  char *s = file_name_;
+  char *token, *save_ptr;
+  int count = 0;
+  
+  for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
+    count++;
+    printf ("'%s'\n", token);
+  }
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
