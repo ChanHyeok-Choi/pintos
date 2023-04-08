@@ -60,6 +60,7 @@ process_execute (const char *file_name)
     Return address would be next instruction address of Caller. 
     Return value of Callee should be saved into the eax register. */
 
+
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -73,12 +74,16 @@ start_process (void *file_name_)
 
   char *s = file_name_;
   char *token, *save_ptr;
-  int count = 0;
+  char *tokens[20]; // Arbitrarily set number of maximum argument
+  int arg_count = 0;
   
   for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
-    count++;
-    printf ("'%s'\n", token);
+    tokens[arg_count++] = token;
+    // printf ("'%s'\n", tokens[arg_count]);
+    // arg_count++;
   }
+
+  file_name = tokens[0];
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -86,6 +91,8 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+
+  // We need to stack arguments into use stack!
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
