@@ -149,8 +149,8 @@ start_process (void *file_name_)
   printf("why..\n");
   
   // We need to stack arguments into use stack!
-  // save_user_stack(tokens, arg_cnt, &if_.esp);
-  // hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+  save_user_stack(tokens, arg_cnt, &if_.esp);
+  hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
