@@ -52,6 +52,8 @@ process_execute (const char *file_name)
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  
+  palloc_free_page (s); 
   return tid;
 }
 
@@ -59,6 +61,52 @@ process_execute (const char *file_name)
     When function is called, arguments would be saved in order (right -> left). 
     Return address would be next instruction address of Caller. 
     Return value of Callee should be saved into the eax register. */
+
+/* A function that saves program name and arguments into user stack. 
+   tokens: memory space where program name and arguments saved.
+   arg_cnt: number of arguments.
+   esp: address pointing to stack pointer. */
+void save_user_stack(char** tokens, int arg_cnt, void **esp) {
+  int i = 0;
+  /* Push tokens onto user stack. */
+  for (i = arg_cnt - 1; i >= 0; i--) {
+    size_t arg_size = strlen(tokens[i]) + 1;
+    *esp -= arg_size;
+    memcpy(*esp, tokens[i], arg_size);
+    tokens[i] = *esp; // change from token to stack address for pushing argument address onto the stack later.
+  }
+
+  /* Push word-align onto the stack. */
+  int word_align = (uintptr_t) *esp % 4;
+  if (word_align) {
+    *esp -= word_align;
+    memcpy(*esp, &tokens[arg_cnt], word_align);
+  }
+
+  /* Push argv[0 ~ arg_cnt + 1] onto the stack. */
+  *esp -= sizeof(char *);
+  char* null_ptr = NULL;
+  memcpy(*esp, &null_ptr, sizeof(char *));
+
+  for (i = arg_cnt - 1; i >= 0; i--) {
+    *esp -= sizeof(char *);
+    memcpy(*esp, &tokens[i], sizeof(char *));
+  }
+
+  /* main(int argc, char **argv) */
+  /* Push argv onto the stack. */
+  void *argv_ptr = *esp;
+  *esp -= sizeof(char **);
+  memcpy(*esp, &argv_ptr, sizeof(char **));
+  /* Push argc onto the stack. */
+  *esp -= sizeof(int);
+  memcpy(*esp, &arg_cnt, sizeof(int));
+
+  /* Push fake address(0) onto the stack. */
+  *esp -= sizeof(void *);
+  void *fake = NULL;
+  memcpy(*esp, &fake, sizeof(void *));
+}
 
 
 /* A thread function that loads a user process and starts it
@@ -74,16 +122,17 @@ start_process (void *file_name_)
 
   char *s = file_name_;
   char *token, *save_ptr;
-  char *tokens[20]; // Arbitrarily set number of maximum argument
-  int arg_count = 0;
+  char *tokens[20]; // Arbitrarily set maximum number of arguments
+  int arg_cnt = 0;
   
   for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
-    tokens[arg_count++] = token;
-    // printf ("'%s'\n", tokens[arg_count]);
-    // arg_count++;
+    tokens[arg_cnt++] = token;
+    // printf ("'%s'\n", tokens[arg_cnt]);
+    // arg_cnt++;
   }
 
-  file_name = tokens[0];
+  strlcpy (tokens[0], file_name, PGSIZE);
+  // printf("'%s'\n", file_name);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -92,12 +141,16 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  // We need to stack arguments into use stack!
-
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+  
+  printf("why..\n");
+  
+  // We need to stack arguments into use stack!
+  // save_user_stack(tokens, arg_cnt, &if_.esp);
+  // hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
