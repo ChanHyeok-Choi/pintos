@@ -29,7 +29,8 @@ tid_t
 process_execute (const char *file_name) 
 {
   /* main() -> run_action() -> run_task() -> ifdef USERPROG -> HERE!*/
-  /* Problem: This function could not parse arguments of file_name. */
+  /* Problem: This function could not parse arguments of file_name. So, it passed whole commnad lien into thread_create(). */
+  /* Solution: First token should be passed to thread_create() as thread_name, using strtok_r() function from string.c! */
   char *fn_copy;
   tid_t tid;
 
@@ -40,8 +41,13 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  char s[] = file_name;
+  char *first_token, *save_ptr;
+
+  first_token = strtok_r(s, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
