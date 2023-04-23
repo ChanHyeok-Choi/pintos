@@ -31,29 +31,30 @@ process_execute (const char *file_name)
   /* main() -> run_action() -> run_task() -> ifdef USERPROG -> HERE!*/
   /* Problem: This function could not parse arguments of file_name. So, it passed whole commnad lien into thread_create(). */
   /* Solution: First token should be passed to thread_create() as thread_name, using strtok_r() function from string.c! */
-  char *fn_copy;
+  char *fn_copy, *cmd;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
+  cmd = palloc_get_page (0);
+  if (fn_copy == NULL || cmd == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (cmd, file_name, PGSIZE);
 
   /* Parsing file_name in order to pass the first token of it into thread_create(). */
-  char *s; s = palloc_get_page (0); strlcpy(s, file_name, PGSIZE);
   char *first_token, *save_ptr; // first token would be file_name.
 
-  first_token = strtok_r(s, " ", &save_ptr);
-  // printf("'%s'\n", first_token);
+  first_token = strtok_r(cmd, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
+  
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+    palloc_free_page (cmd);
   
-  palloc_free_page (s); 
   return tid;
 }
 
@@ -70,7 +71,7 @@ void save_user_stack(char** tokens, int arg_cnt, void **esp) {
   int i = 0;
   /* Push tokens onto user stack. */
   for (i = arg_cnt - 1; i >= 0; i--) {
-    size_t arg_size = strlen(tokens[i]) + 1;
+    size_t arg_size = strlen(tokens[i]) + 1; // include \0.
     *esp -= arg_size;
     memcpy(*esp, tokens[i], arg_size);
     tokens[i] = *esp; // change from token to stack address for pushing argument address onto the stack later.
@@ -122,35 +123,31 @@ start_process (void *file_name_)
 
   char *s = file_name_;
   char *token, *save_ptr;
-  char *tokens[20]; // Arbitrarily set maximum number of arguments
+  char *tokens[32]; // Arbitrarily set maximum number of arguments
   int arg_cnt = 0;
-  
-  for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
-    tokens[arg_cnt++] = token;
-    // printf ("'%s'\n", tokens[arg_cnt]);
-    // arg_cnt++;
-  }
 
-  strlcpy (tokens[0], file_name, PGSIZE);
-  // printf("'%s'\n", file_name);
+  for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
+    // printf("%s \n", token);
+    tokens[arg_cnt++] = token;
+  }
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
-
+  // debug_backtrace();
+  success = load (tokens[0], &if_.eip, &if_.esp);
+  if (success) {
+    // We need to stack arguments into use stack!
+    save_user_stack(tokens, arg_cnt, &if_.esp);
+    // hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+  }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
-  
-  printf("why..\n");
-  
-  // We need to stack arguments into use stack!
-  save_user_stack(tokens, arg_cnt, &if_.esp);
-  hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -175,6 +172,10 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   /* Gotta! */
+  int i = 0;
+  while (i < 100000000) {
+    i++;
+  }
   return -1;
 }
 
