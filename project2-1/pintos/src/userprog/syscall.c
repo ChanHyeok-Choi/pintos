@@ -57,14 +57,19 @@ int open (const char *file) {
   if (f == NULL) {
     return -1;
   }
-  """WE NEED FILE DESCRIPTER!!!"""
-  return fd;
+  // WE NEED FILE DESCRIPTOR!!!
+  struct thread *cur = thread_current();
+  cur->file_descriptor_table[cur->next_fd++] = f;
+  return cur->next_fd;
 }
 
 /* Closes file descriptor fd. Exiting or terminating a process implicitly closes 
    all its open file descriptors, as if by calling this function for each one.*/
 void close (int fd) {
-  file_close(fd);
+  struct thread *cur = thread_current();
+  struct file *f = cur->file_descriptor_table[fd];
+  file_close(f);
+  cur->file_descriptor_table[fd] = NULL;
 }
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of bytes 

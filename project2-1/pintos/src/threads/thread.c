@@ -194,7 +194,8 @@ thread_create (const char *name, int priority,
   t->file_descriptor_table = palloc_get_page(PAL_ZERO);
   if (t->file_descriptor_table == NULL)
     return TID_ERROR;
-  for (int i = 0; i < FDT_MAX_SIZE; i++)
+  int i;
+  for (i = 0; i < FDT_MAX_SIZE; i++)
     t->file_descriptor_table[i] = NULL;
   t->next_fd = 2; // File descriptor table has initially stdin(0) and stdout(1).
   
