@@ -7,6 +7,8 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "userprog/pagedir.h"
+#include "threads/synch.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -14,6 +16,7 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init(&filesys_lock);
 }
 
 /* syscall turns user space into kernel space. 
@@ -44,7 +47,10 @@ bool create (const char *file, unsigned initial_size) {
   if (file == NULL) {
     exit(-1);
   }
-  return filesys_create(file, initial_size);
+  lock_acquire (&filesys_lock);
+  bool result = filesys_create(file, initial_size);
+  lock_release(&filesys_lock);
+  return result;
 }
 
 /* Opens the file called file. Returns a nonnegative integer handle called a 
@@ -53,14 +59,18 @@ int open (const char *file) {
   if (file == NULL) {
     exit(-1);
   }
+  lock_acquire (&filesys_lock);
   struct file *f = filesys_open(file);
+  lock_release(&filesys_lock);
   if (f == NULL) {
     return -1;
   }
   // WE NEED FILE DESCRIPTOR!!!
   struct thread *cur = thread_current();
-  cur->file_descriptor_table[cur->next_fd++] = f;
-  return cur->next_fd;
+  int fd = cur->next_fd;
+  cur->file_descriptor_table[fd] = f;
+  cur->next_fd++;
+  return fd;
 }
 
 /* Closes file descriptor fd. Exiting or terminating a process implicitly closes 
@@ -68,7 +78,9 @@ int open (const char *file) {
 void close (int fd) {
   struct thread *cur = thread_current();
   struct file *f = cur->file_descriptor_table[fd];
+  lock_acquire (&filesys_lock);
   file_close(f);
+  lock_release(&filesys_lock);
   cur->file_descriptor_table[fd] = NULL;
 }
 
@@ -77,11 +89,18 @@ void close (int fd) {
 int write (int fd, const void *buffer, unsigned size) {
   /* We should implenment only the following: 
      If fd == 1, writes to console: call putbuf(buffer, size) and return size. */
+  struct thread *cur = thread_current();
+  struct file *f = cur->file_descriptor_table[fd];
+  
   if (fd == 1) {
     putbuf(buffer, size);
     return size;
   } else {
-    return -1;
+    /* Use lock to avoid concurrent access to file when read or write it. */
+    lock_acquire(&filesys_lock);
+    off_t file_size = file_write(f, buffer, size);
+    lock_release(&filesys_lock);
+    return (int) file_size;
   }
 }
 
@@ -89,13 +108,13 @@ int write (int fd, const void *buffer, unsigned size) {
    If it is out of the space, then exit process.*/
 void check_user_space(void *stack_ptr) {
   // ASSERT(is_user_vaddr(stack_ptr));
-  if ((int)stack_ptr >= 0x8048000 || (unsigned int)stack_ptr <= 0xc0000000) {
+  // if ((int)stack_ptr >= 0x8048000 || (unsigned int)stack_ptr <= 0xc0000000) {
+  if(is_user_vaddr(stack_ptr)) {
     // pass
   } else {
     exit(-1);
   }
-  void *ptr = pagedir_get_page(thread_current()->pagedir, stack_ptr);
-  if (ptr != NULL) {
+  if (pagedir_get_page(thread_current()->pagedir, stack_ptr) != NULL) {
     // pass
   } else {
     exit(-1);
@@ -106,18 +125,26 @@ void check_user_space(void *stack_ptr) {
    i.e., copy arguments of system call into kernel. */
 void copy_arguments(void *esp, int *arg, int arg_cnt) {
   /* There are three cases for arguments: # of arguments are from 1 to 3. */
+
+  // printf("aaaaaaa %x\n", esp+20);
+  // hex_dump((uintptr_t)esp, esp, PHYS_BASE - esp, true);
+
   switch (arg_cnt) {
     case 1:
-      arg[0] = (int)(esp+1);
+      check_user_space(esp+4);
+      arg[0] = *(int *)(esp+4);
       break;
     case 2:
-      arg[0] = (int)(esp+4);
-      arg[1] = (int)(esp+5);
+      check_user_space(esp+16);
+      arg[0] = *(int *)(esp+16);
+      arg[1] = *(int *)(esp+20);
       break;
     case 3:
-      arg[0] = (int)(esp+5);
-      arg[1] = (int)(esp+6);
-      arg[2] = (int)(esp+7);
+      check_user_space(esp+20);
+      arg[0] = *(int *)(esp+20);
+      arg[1] = *(int *)(esp+24);
+      arg[2] = *(int *)(esp+28);
+      // printf("%d %x %d\n", arg[0], arg[1], arg[2]);
       break;
   };
 }

@@ -173,7 +173,7 @@ process_wait (tid_t child_tid UNUSED)
 {
   /* Gotta! */
   int i = 0;
-  while (i < 100000000) {
+  while (i < 10000000) {
     i++;
   }
   return -1;
