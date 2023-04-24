@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "filesys/file.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,6 +24,9 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+/* File descriptor table size. */
+#define FDT_MAX_SIZE 128
 
 /* A kernel thread or user process.
 
@@ -93,6 +97,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     int64_t sleep_ticks;                /* Remained ticks for sleeping. */
+
+    /* Shared between thread.c and userprog/syscall.c. */
+    struct file **file_descriptor_table;/* File descriptor table in kernel address space. */
+    int next_fd;                        /* Next file descripter. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
