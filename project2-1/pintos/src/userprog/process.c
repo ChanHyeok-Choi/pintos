@@ -127,6 +127,10 @@ start_process (void *file_name_)
   int arg_cnt = 0;
 
   for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)) {
+    if (arg_cnt > 32) {
+      palloc_free_page (file_name);
+      thread_exit ();
+    }
     // printf("%s \n", token);
     tokens[arg_cnt++] = token;
   }

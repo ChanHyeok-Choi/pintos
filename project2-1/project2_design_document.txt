@@ -8,8 +8,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Jungmin Park <jm971004@unist.ac.kr>
+Chanhyeok Choi <chan4184@unist.ac.kr>
 
 ---- PRELIMINARIES ----
 
@@ -29,19 +29,53 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+char *cmd;                    - Temporarily, it stores entire file_name to tokenize it to get a first token
+char *first_token, *save_ptr; - Static variables to use strtok_r()
+char *tokens[32];             - Memory space to save a given file, arbitrary size is 32
+int arg_cnt;                  - Current number of arguments being processed
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+Program flow: main() -> run_action() -> run_task() -> ifdef USERPROG -> process_execute()
+There is a problem in process_execute(): It could not parse arguments of file_name. So, it passed whole command liens into thread_create().
+Therefore, first token should be passed to thread_create() as thread_name, using strtok_r() function from string.c in order to chop off each token!
+After a thread is created, start_process() is executed, in which the passed tokens(or arguments) should be saved in user space(or stack).
+We decided to follow the 80x86 Calling Convetion that is described on the stanford site: 
+    When function is called, arguments would be saved in order (right -> left). 
+    Return address would be next instruction address of Caller. 
+    Return value of Callee should be saved into the eax register.
+
+So, we made save_user_stack() that is following:
+    A function that saves program name and arguments into user stack. 
+    tokens: memory space where program name and arguments saved.
+    arg_cnt: number of arguments.
+    esp: address pointing to stack pointer.
+
+By the convention, we were able to store the arguments down the stack. In the function, the arguments are scanned through backwards, so that the first token is
+the last argument, the last token is the first argument. We could just keep decreasing esp pointer to setup the argv[] elements. 
+That is, we could arrange for the elements of argv[] to be in the right order.
+
+Since we restricted the number of arguments to 32, this will make sure that if the number of arguments exceeds 32, argv would be freed then
+the thread is exited, which avoids overflowing of the stack page.
+
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+Unlike strtok(), strtok_r() uses an extra argument for saving the position of next token, 
+which help thread safe and can be used in nested loop.
+
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+1. Prevent from passing bad arguments into kernel. That is, checking the command before passing it into kernel
+   to avoid kernel fail.
+2. The shell separates commands, which shortens the time in kernel.
 
                  SYSTEM CALLS
                  ============
@@ -52,9 +86,26 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* threads/thread.h */
+struct thread {
+    ...
+    struct file **file_descriptor_table; - File descriptor table in kernel address space. 
+    int next_fd;                         - Next file descripter. 
+    ...
+}
+
+/* userprog/syscall.h */
+struct lock filesys_lock; - A lock used by syscalls to ensure only one thread at a time is accessing file system 
+
+/* userprog/syscall.c */
+int syscall_number = *(int *)f->esp; - static variable to check a syscall number, used on switch statement.
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+In our implementation, file descriptors are stored in file descriptor table, where they matches to each file
+by one-to-one and can be used through syscalls to access file. The file descriptor is unique within the entire OS.
 
 ---- ALGORITHMS ----
 
