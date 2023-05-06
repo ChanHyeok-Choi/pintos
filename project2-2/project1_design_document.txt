@@ -1,0 +1,161 @@
+      +--------------------+
+      |        CS 140      |
+      | PROJECT 1: THREADS |
+      |   DESIGN DOCUMENT  |
+      +--------------------+
+           
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Jungmin Park <jm971004@unist.ac.kr>
+Chanhyeok Choi <chan4184@unist.ac.kr>
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+           ALARM CLOCK
+           ===========
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+1. A member variable of struc thread, which stores how much the thread
+   should be sleeping.
+struct thread {
+      int64_t sleep_ticks;                /* Remained ticks for sleeping. */
+}
+
+2. List of processes in thread_sleep state instaed of ready_list,
+   that is, processes that will be sleeping when timer_sleep() is called.
+static struct list sleep_list;
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe what happens in a call to timer_sleep(),
+>> including the effects of the timer interrupt handler.
+
+When timer_sleep() is called, the current interrupt state is INTR_ON.
+Then, thread_sleep() function we defined is called, and given an argument.
+The argument is how much the thread should be sleeping after timer_ticks().
+At thread_sleep(), it makes interrupt be turned off and push the current thread
+into sleep_list. Also, the pushed current thread would have THREAD_BLOCKED state
+and ticks that it should be sleeping. Then, to schedule a new process, call
+schedule() and return the current interrupt state to the previous state.
+If not preventing thread switch during these tasks, the current thread and sleep_list
+can be unpredictable.
+
+timer_interrupt() is being called as TIMER_FREQ times per second by timer_init() function.
+Then, thread_wake_up() is being called by timer_interrupt() function. And then,
+all sleeping threads' sleep_ticks in sleep_list will be compared with ticks that
+is from timer_ticks(). We applied while loop for iterating all elements, and added a particular
+condition to avoid the amount of time waste. If there is a sleeping thread to be waken up, 
+remove it from sleep_list and push it into ready_list by unblocking thread.
+
+>> A3: What steps are taken to minimize the amount of time spent in
+>> the timer interrupt handler?
+
+To prevent all process in sleep_list from being compared with ticks to be waken up
+each time timer_interrupt being called, we define least_than_sleep_tick() function and use
+it whenever thread to sleep is pushed into sleep_list. Because the wake up mechanism will 
+work only when a thread's sleep_ticks is equal to or less than ticks passed from timer_interrupt(), 
+it is possible to reduce loads doing the same tasks.
+
+---- RATIONALE ----
+
+>> A6: Why did you choose this design?  In what ways is it superior to
+>> another design you considered?
+
+To avoid busy waiting method, we designed sleep and wake up mechanism. we defined sleep_list 
+for storing sleeping threads and defined least_sleep_ticks for tracing the least tick 
+to wake up sleeping threads in sleep_list.
+
+In short, the reason why we chose this design is that sleeping thread doesn't need
+to be yield to CPU and passed to ready_list. So, we made sleep_list and less_than_sleep_tick()
+to avoid tracing sleep_list to wake up the sleeping thread every tick. Then, we only check
+whether thread's sleep_ticks is equal to or less than ticks, which reduces the 
+amount of time for looking around threads in sleep_list to wake up each tick.
+
+       PRIORITY SCHEDULING
+       ===================
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+There are no such new or changed data structures.
+
+---- RATIONALE ----
+
+>> B7: Why did you choose this design?  In what ways is it superior to
+>> another design you considered?
+
+We've got three design options for change from round robin scheduling to priority scheduling.
+
+1. Search the thread with the highest priority in the ready_list whenever context switching happens.
+2. Priority sorting of threads in ready_list whenever a new thread is pushed to the end of the ready_list
+3. When add thread into ready_list (new thread, unblock, yield), 
+	insert in priority order instead of push. (adopted design)
+
+The third design was adopted because of these reasons:
+1. The design method 1 can be divided into two cases. In both cases, there are some problems.
+	1) If we search for the highest priority each time at context switching, 
+	   the average waiting time increases in proportion to the number of threads in ready_list.
+	2) Similar to the alarm clock, even if the thread with the highest priority is stored before context switching,
+	   if the search time is longer than the processing time of the current thread, the waiting time can still increases.
+2. Comparing design method 2, It was easier to perform list_insert_ordered() function that is already implemented in list.c
+   rather than push threads all the time, creating new insertion sorting function and use it.
+3. By using design method 3, since ready_list only need to pass the thread in list head,
+   this design have a significant time advantage in context switching.
+
+While using design method 3, we need to consider the situation that thread_set_priority() changes 
+the current_thread's priority since there are some chance of priority reverse 
+between current_thread and threads in ready_list.
+For this situation, we added current_list_compare_priority() at thread_set_priority() to yield for that case.
+
+
+
+
+
+         SURVEY QUESTIONS
+         ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+Moderate.
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+Yeah, we could get insight for scheduling and thread management machanism.
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+It was fine.
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+Thank you for your TA session.
+
+>> Any other comments?
