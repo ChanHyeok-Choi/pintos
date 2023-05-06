@@ -1,0 +1,21 @@
+{
+    "configurations": [
+      {
+        "type": "gdb",
+        "request": "attach",
+        "name": "Attach to gdbserver : userprog",
+        "executable": "/home/edusc02/edusc02-014/team_2/project2-2/pintos/src/userprog/build/kernel.o",
+        "target": "localhost:${input:port}",
+        "remote": true,
+        "cwd": "/home/edusc02/edusc02-014/team_2/project2-2/pintos/src/userprog/build",
+        "valuesFormatting": "parseText"
+      }
+    ],
+    "inputs": [
+      {
+        "id": "port",
+        "description": "gdb server port",
+        "type": "promptString",
+      }
+    ]
+  }

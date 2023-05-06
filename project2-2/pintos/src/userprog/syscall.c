@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "devices/shutdown.h"
+#include "devices/input.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "userprog/pagedir.h"
@@ -84,6 +85,36 @@ void close (int fd) {
   cur->file_descriptor_table[fd] = NULL;
 }
 
+/* Reads size bytes from the file open as fd into buffer. Returns the number of bytes 
+   actually read (0 at end of file), or -1 if the file could not be read (due to a 
+   condition other than end of file). Fd 0 reads from the keyboard using input_getc().*/
+int read (int fd, void *buffer, unsigned size) {
+  struct thread *cur = thread_current();
+  struct file *f = cur->file_descriptor_table[fd];
+  
+  if (f == NULL) {
+    return -1;
+  }
+  
+  if (fd == 0) {
+    /* Read input from keyboard. */
+    char *buffer_ = buffer;
+    unsigned i;
+    for (i = 0; i < size; i++) {
+      buffer_[i] = input_getc ();
+      if (buffer_[i] == '\0') {
+        break;
+      }
+    }
+    return size;
+  } else {
+    lock_acquire (&filesys_lock);
+    off_t file_size = file_read(f, buffer, size);
+    lock_release(&filesys_lock);
+    return (int) file_size;
+  }
+}
+
 /* Writes size bytes from buffer to the open file fd. Returns the number of bytes 
    actually written, which may be less than size if some bytes could not be written.*/
 int write (int fd, const void *buffer, unsigned size) {
@@ -97,6 +128,9 @@ int write (int fd, const void *buffer, unsigned size) {
     return size;
   } else {
     /* Use lock to avoid concurrent access to file when read or write it. */
+    if (f == NULL) {
+      return -1;
+    }
     lock_acquire(&filesys_lock);
     off_t file_size = file_write(f, buffer, size);
     lock_release(&filesys_lock);
@@ -179,6 +213,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_CLOSE:
       copy_arguments(f->esp, args, 1);
       close(args[0]);
+      break;
+    case SYS_READ:
+      copy_arguments(f->esp, args, 3);
+      f->eax = read(args[0], (void *) args[1], (unsigned) args[2]);
       break;
     case SYS_WRITE:
       copy_arguments(f->esp, args, 3);
