@@ -58,7 +58,7 @@ bool create (const char *file, unsigned initial_size) {
    "file descriptor" (fd), or -1 if the file could not be opened.*/
 int open (const char *file) {
   if (file == NULL) {
-    exit(-1);
+    return -1;
   }
   lock_acquire (&filesys_lock);
   struct file *f = filesys_open(file);
@@ -68,9 +68,8 @@ int open (const char *file) {
   }
   // WE NEED FILE DESCRIPTOR!!!
   struct thread *cur = thread_current();
-  int fd = cur->next_fd;
+  int fd = cur->next_fd++;
   cur->file_descriptor_table[fd] = f;
-  cur->next_fd++;
   return fd;
 }
 
@@ -90,24 +89,29 @@ void close (int fd) {
    condition other than end of file). Fd 0 reads from the keyboard using input_getc().*/
 int read (int fd, void *buffer, unsigned size) {
   struct thread *cur = thread_current();
-  struct file *f = cur->file_descriptor_table[fd];
-  
-  if (f == NULL) {
-    return -1;
-  }
-  
+  struct file *f;
+
+  check_user_space(buffer);
+
   if (fd == 0) {
     /* Read input from keyboard. */
     char *buffer_ = buffer;
     unsigned i;
     for (i = 0; i < size; i++) {
-      buffer_[i] = input_getc ();
+      buffer_[i] = input_getc();
       if (buffer_[i] == '\0') {
         break;
       }
     }
-    return size;
+    return i;
   } else {
+    if (fd < 0 || fd >= cur->next_fd) {
+      return -1;  // Invalid file descriptor
+    }
+    f = cur->file_descriptor_table[fd];
+    if (f == NULL) {
+      return -1; 
+    }
     lock_acquire (&filesys_lock);
     off_t file_size = file_read(f, buffer, size);
     lock_release(&filesys_lock);
