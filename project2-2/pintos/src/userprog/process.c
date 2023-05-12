@@ -180,6 +180,15 @@ process_wait (tid_t child_tid UNUSED)
   while (i < 10000000) {
     i++;
   }
+  /* Pintos doesn't have hierarchical process structure to describe relationship between
+     parent and child process. (e.g., init process doesn't know user process, so pintos
+     would just exit before user program run.)
+     
+     * Parent process should wait until child process return normal state(=normally exit).
+     * Search child process descriptor through pid value of child process.
+     * Push parent process into WAIT list until child process exits.
+     * If child process normally exit, then remove the process descriptor and return exit status.
+       Else (abnormally exit, e.g., kill()), return -1. */
   return -1;
 }
 
