@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "filesys/file.h"
+#include "synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -102,6 +103,14 @@ struct thread
     struct file **file_descriptor_table;/* File descriptor table in kernel address space. */
     int next_fd;                        /* Next file descripter. */
 
+    /* Shared between thread.c and userprog/process.c & syscall.c. */
+    struct thread *parent;              /* Process descriptor pointer of parent process. */
+    int load_status;                    /* Load status of process. */
+    int exit_status;                    /* Exit status of process. */
+    struct semaphore load_sema;         /* Semaphore for load. */
+    struct semaphore exit_sema;         /* Semaphore for load. */
+    struct list child_list;             /* List for child process. */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -115,6 +124,9 @@ struct thread
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
+struct thread *get_child_thread_by_tid (tid_t child_tid);
+void remove_child_thread (struct thread *child_thread);
 
 void thread_init (void);
 void thread_start (void);

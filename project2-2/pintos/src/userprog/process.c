@@ -51,9 +51,18 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   
-  if (tid == TID_ERROR)
+  if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
+    return tid;
+  }
+
+  struct thread *child_thread = get_thread_by_tid(tid);
+  child_thread->parent = thread_current();
+  sema_init(&child_thread->load_sema, 0);
+  child_thread->exit_status = -1;
+
+  sema_down(&child_thread->load_sema);
   
   return tid;
 }
@@ -175,11 +184,6 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  /* Gotta! */
-  int i = 0;
-  while (i < 10000000) {
-    i++;
-  }
   /* Pintos doesn't have hierarchical process structure to describe relationship between
      parent and child process. (e.g., init process doesn't know user process, so pintos
      would just exit before user program run.)
@@ -189,6 +193,25 @@ process_wait (tid_t child_tid UNUSED)
      * Push parent process into WAIT list until child process exits.
      * If child process normally exit, then remove the process descriptor and return exit status.
        Else (abnormally exit, e.g., kill()), return -1. */
+  struct thread *child;
+  int exit_status;
+
+  /* Disable interrupts to ensure mutual exclusion. */
+  enum intr_level old_level = intr_disable();
+
+  /* Find the child process in the wait queue. */
+  child = find_child_process(child_tid);
+
+  /* If the child process is not in the wait queue, return immediately. */
+  if (child == NULL) {
+    intr_set_level(old_level);
+    return -1;
+  }
+
+  if (child)
+
+
+  
   return -1;
 }
 

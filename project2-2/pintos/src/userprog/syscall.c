@@ -142,6 +142,23 @@ int write (int fd, const void *buffer, unsigned size) {
   }
 }
 
+/* Waits for a child process pid and retrieves the child's exit status.
+   If pid is still alive, waits until it terminates. Then, returns the status that pid passed to exit. 
+   If pid did not call exit(), but was terminated by the kernel (e.g. killed due to an exception), 
+   wait(pid) must return -1. It is perfectly legal for a parent process to wait for child processes 
+   that have already terminated by the time the parent calls wait, but the kernel must still allow 
+   the parent to retrieve its child's exit status, or learn that the child was terminated by the kernel.*/
+int wait (tid_t tid) {
+  return process_wait(tid);
+}
+
+/* Executes a new process by parsing the command line string.
+   The new process is loaded and scheduled to run.
+   Returns the process ID (tid) of the new process, or -1 if the execution fails. */
+tid_t exec(const char *cmd_line) {
+  return process_execute(cmd_line);
+}
+
 /* Check if a stack pointer(or address) is in user space(or address): 0x8048000 ~ 0xc0000000. 
    If it is out of the space, then exit process.*/
 void check_user_space(void *stack_ptr) {
@@ -225,6 +242,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_WRITE:
       copy_arguments(f->esp, args, 3);
       f->eax = write(args[0], (const void *) args[1], (unsigned) args[2]);
+      break;
+    case SYS_WAIT:
+      copy_arguments(f->esp, args, 1);
+      f->eax = wait((tid_t) args[0]);
+      break;
+    case SYS_EXEC:
+      copy_arguments(f->esp, args, 1);
+      f->eax = exec((const char *) args[0]);
       break;
   }
 

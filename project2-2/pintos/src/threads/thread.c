@@ -76,6 +76,25 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+/* Return process descriptor's address by looking around child list. */
+struct thread *get_child_thread_by_tid (tid_t child_tid) {
+  struct list_elem* e;
+  struct thread* cur = thread_current();
+  for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+    struct thread* ct = list_entry(e, struct thread, elem);
+    if (ct->tid == child_tid) {
+      return ct;
+    }
+  }
+  return NULL;
+}
+
+/* After removing process descriptor from child list, free memory. */
+void remove_child_thread (struct thread *child_thread) {
+  struct list_elem* e = list_remove(&child_thread->elem);
+  palloc_free_page(e);
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -189,6 +208,10 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
+  t->parent = thread_current();
+  list_push_back(&thread_current()->child_list, &t->elem);
+  sema_init(&t->wait_sema, 0);  /* Initialize wait_sema */
 
   /* Allocate file desciptor table, then initiate it. */
   t->file_descriptor_table = palloc_get_page(PAL_ZERO);
