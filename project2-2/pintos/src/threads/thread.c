@@ -210,8 +210,11 @@ thread_create (const char *name, int priority,
   tid = t->tid = allocate_tid ();
 
   t->parent = thread_current();
+  t->load_status = true;
+  t->exit_status = -1;
+  sema_init(&t->load_sema, 0);
+  sema_init(&t->exit_sema, 0);
   list_push_back(&thread_current()->child_list, &t->elem);
-  sema_init(&t->wait_sema, 0);  /* Initialize wait_sema */
 
   /* Allocate file desciptor table, then initiate it. */
   t->file_descriptor_table = palloc_get_page(PAL_ZERO);
@@ -653,6 +656,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+  
+  list_init (&initial_thread->child_list);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

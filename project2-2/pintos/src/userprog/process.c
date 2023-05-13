@@ -155,6 +155,10 @@ start_process (void *file_name_)
     // We need to stack arguments into use stack!
     save_user_stack(tokens, arg_cnt, &if_.esp);
     // hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+    intr_disable();
+    thread_current()->load_status = success;
+    sema_up(&thread_current()->load_sema);
+    intr_enable();
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
