@@ -729,6 +729,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
+      remove_child_thread(&prev->child_list);
       palloc_free_page (prev);
     }
 }

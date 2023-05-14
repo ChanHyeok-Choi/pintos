@@ -10,6 +10,7 @@
 #include "userprog/pagedir.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "userprog/process.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -37,6 +38,7 @@ void halt (void) {
    If the process's parent waits for it (see below), this is the status that will be returned.
    Conventionally, a status of 0 indicates success and nonzero values indicate errors.*/
 void exit (int status) {
+  thread_current()->exit_status = status;
   printf("%s: exit(%d)\n", thread_current()->name, status);
   thread_exit();
 }

@@ -51,18 +51,11 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   
+  sema_down(&thread_current()->load_sema);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
-    return tid;
   }
-
-  struct thread *child_thread = get_thread_by_tid(tid);
-  child_thread->parent = thread_current();
-  sema_init(&child_thread->load_sema, 0);
-  child_thread->exit_status = -1;
-
-  sema_down(&child_thread->load_sema);
   
   return tid;
 }
@@ -162,8 +155,11 @@ start_process (void *file_name_)
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
+  if (!success) {
+    thread_current()->exit_status = -1;
+    sema_up(&thread_current()->parent->load_sema);
     thread_exit ();
+  }
 
 
   /* Start the user process by simulating a return from an
@@ -197,26 +193,19 @@ process_wait (tid_t child_tid UNUSED)
      * Push parent process into WAIT list until child process exits.
      * If child process normally exit, then remove the process descriptor and return exit status.
        Else (abnormally exit, e.g., kill()), return -1. */
-  struct thread *child;
-  int exit_status;
+  struct thread *cur = thread_current();
+  struct thread *child = get_child_thread_by_tid(child_tid);
 
-  /* Disable interrupts to ensure mutual exclusion. */
-  enum intr_level old_level = intr_disable();
-
-  /* Find the child process in the wait queue. */
-  child = find_child_process(child_tid);
-
-  /* If the child process is not in the wait queue, return immediately. */
-  if (child == NULL) {
-    intr_set_level(old_level);
+  if (child == NULL || child->parent != cur)
     return -1;
-  }
 
-  if (child)
-
-
-  
-  return -1;
+  sema_down(&child->exit_sema);
+  int exit_status = child->exit_status;
+  if (exit_status == -1)
+    return -1;
+    
+  remove_child_thread(child);
+  return exit_status;
 }
 
 /* Free the current process's resources. */

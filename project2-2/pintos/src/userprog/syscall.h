@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "threads/synch.h"
+#include "threads/thread.h"
 
 struct lock filesys_lock;
 

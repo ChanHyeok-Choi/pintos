@@ -5,6 +5,8 @@
         "unistd.h": "c",
         "array": "c",
         "initializer_list": "c",
-        "filesys.h": "c"
+        "filesys.h": "c",
+        "file.h": "c",
+        "list.h": "c"
     }
 }
