@@ -184,28 +184,12 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  /* Pintos doesn't have hierarchical process structure to describe relationship between
-     parent and child process. (e.g., init process doesn't know user process, so pintos
-     would just exit before user program run.)
-     
-     * Parent process should wait until child process return normal state(=normally exit).
-     * Search child process descriptor through pid value of child process.
-     * Push parent process into WAIT list until child process exits.
-     * If child process normally exit, then remove the process descriptor and return exit status.
-       Else (abnormally exit, e.g., kill()), return -1. */
-  struct thread *cur = thread_current();
-  struct thread *child = get_child_thread_by_tid(child_tid);
-
-  if (child == NULL || child->parent != cur)
-    return -1;
-
-  sema_down(&child->exit_sema);
-  int exit_status = child->exit_status;
-  if (exit_status == -1)
-    return -1;
-    
-  remove_child_thread(child);
-  return exit_status;
+  /* Gotta! */
+  int i = 0;
+  while (i < 10000000) {
+    i++;
+  }
+  return -1;
 }
 
 /* Free the current process's resources. */
