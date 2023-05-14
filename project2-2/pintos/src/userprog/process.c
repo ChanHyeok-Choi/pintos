@@ -51,7 +51,7 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   
-  sema_down(&thread_current()->load_sema);
+  // sema_down(&thread_current()->load_sema);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
@@ -148,16 +148,16 @@ start_process (void *file_name_)
     // We need to stack arguments into use stack!
     save_user_stack(tokens, arg_cnt, &if_.esp);
     // hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
-    intr_disable();
-    thread_current()->load_status = success;
-    sema_up(&thread_current()->load_sema);
-    intr_enable();
+    // intr_disable();
+    // thread_current()->load_status = success;
+    // sema_up(&thread_current()->load_sema);
+    // intr_enable();
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    thread_current()->exit_status = -1;
-    sema_up(&thread_current()->parent->load_sema);
+    // thread_current()->exit_status = -1;
+    // sema_up(&thread_current()->parent->load_sema);
     thread_exit ();
   }
 
@@ -189,6 +189,16 @@ process_wait (tid_t child_tid UNUSED)
   while (i < 10000000) {
     i++;
   }
+  /* Pintos doesn't have hierarchical process structure to describe relationship between
+     parent and child process. (e.g., init process doesn't know user process, so pintos
+     would just exit before user program run.)
+     
+     * Parent process should wait until child process return normal state(=normally exit).
+     * Search child process descriptor through pid value of child process.
+     * Push parent process into WAIT list until child process exits.
+     * If child process normally exit, then remove the process descriptor and return exit status.
+       Else (abnormally exit, e.g., kill()), return -1. */
+
   return -1;
 }
 

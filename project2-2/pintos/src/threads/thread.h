@@ -125,8 +125,8 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
-struct thread *get_child_thread_by_tid (tid_t child_tid);
-void remove_child_thread (struct thread *child_thread);
+// struct thread *get_child_thread_by_tid (tid_t child_tid);
+// void remove_child_thread (struct thread *child_thread);
 
 void thread_init (void);
 void thread_start (void);

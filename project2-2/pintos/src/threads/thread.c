@@ -77,23 +77,23 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
 /* Return process descriptor's address by looking around child list. */
-struct thread *get_child_thread_by_tid (tid_t child_tid) {
-  struct list_elem* e;
-  struct thread* cur = thread_current();
-  for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
-    struct thread* ct = list_entry(e, struct thread, elem);
-    if (ct->tid == child_tid) {
-      return ct;
-    }
-  }
-  return NULL;
-}
+// struct thread *get_child_thread_by_tid (tid_t child_tid) {
+//   struct list_elem* e;
+//   struct thread* cur = thread_current();
+//   for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+//     struct thread* ct = list_entry(e, struct thread, elem);
+//     if (ct->tid == child_tid) {
+//       return ct;
+//     }
+//   }
+//   return NULL;
+// }
 
-/* After removing process descriptor from child list, free memory. */
-void remove_child_thread (struct thread *child_thread) {
-  struct list_elem* e = list_remove(&child_thread->elem);
-  palloc_free_page(e);
-}
+// /* After removing process descriptor from child list, free memory. */
+// void remove_child_thread (struct thread *child_thread) {
+//   struct list_elem* e = list_remove(&child_thread->elem);
+//   palloc_free_page(e);
+// }
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -209,12 +209,12 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
-  t->parent = thread_current();
-  t->load_status = true;
-  t->exit_status = -1;
-  sema_init(&t->load_sema, 0);
-  sema_init(&t->exit_sema, 0);
-  list_push_back(&thread_current()->child_list, &t->elem);
+  // t->parent = thread_current();
+  // t->load_status = true;
+  // t->exit_status = -1;
+  // sema_init(&t->load_sema, 0);
+  // sema_init(&t->exit_sema, 0);
+  // list_push_back(&thread_current()->child_list, &t->elem);
 
   /* Allocate file desciptor table, then initiate it. */
   t->file_descriptor_table = palloc_get_page(PAL_ZERO);
@@ -657,7 +657,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
   
-  list_init (&initial_thread->child_list);
+  // list_init (&initial_thread->child_list);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -729,7 +729,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      remove_child_thread(&prev->child_list);
+      // remove_child_thread(&prev->child_list);
       palloc_free_page (prev);
     }
 }
