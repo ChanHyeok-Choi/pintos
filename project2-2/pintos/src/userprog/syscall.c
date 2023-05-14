@@ -92,9 +92,8 @@ void close (int fd) {
 int read (int fd, void *buffer, unsigned size) {
   struct thread *cur = thread_current();
   struct file *f;
-
-  check_user_space(buffer);
-
+  int file_size;
+  
   if (fd == 0) {
     /* Read input from keyboard. */
     char *buffer_ = buffer;
@@ -106,19 +105,18 @@ int read (int fd, void *buffer, unsigned size) {
       }
     }
     return i;
+  } else if (fd == 1) {
+    return -1;
   } else {
-    if (fd < 0 || fd >= cur->next_fd) {
-      return -1;  // Invalid file descriptor
-    }
     f = cur->file_descriptor_table[fd];
     if (f == NULL) {
       return -1; 
     }
     lock_acquire (&filesys_lock);
-    off_t file_size = file_read(f, buffer, size);
+    file_size = file_read(f, buffer, size);
     lock_release(&filesys_lock);
-    return (int) file_size;
   }
+  return file_size;
 }
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of bytes 
@@ -158,7 +156,22 @@ int wait (tid_t tid) {
    The new process is loaded and scheduled to run.
    Returns the process ID (tid) of the new process, or -1 if the execution fails. */
 tid_t exec(const char *cmd_line) {
-  return process_execute(cmd_line);
+  tid_t tid;
+  struct thread *child;
+
+  tid = process_execute (cmd_line);
+  child = get_child_thread_by_tid (tid);
+
+  if (child != NULL) {
+    sema_down (&child->load_sema);
+
+    if (!child->load_status)
+      return -1;
+    else
+      return tid;
+  }
+
+  return -1;
 }
 
 /* Check if a stack pointer(or address) is in user space(or address): 0x8048000 ~ 0xc0000000. 

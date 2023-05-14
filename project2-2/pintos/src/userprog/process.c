@@ -51,7 +51,6 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   
-  // sema_down(&thread_current()->load_sema);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
@@ -148,19 +147,15 @@ start_process (void *file_name_)
     // We need to stack arguments into use stack!
     save_user_stack(tokens, arg_cnt, &if_.esp);
     // hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
-    // intr_disable();
-    // thread_current()->load_status = success;
-    // sema_up(&thread_current()->load_sema);
-    // intr_enable();
+    sema_up (&thread_current()->load_sema);
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    // thread_current()->exit_status = -1;
-    // sema_up(&thread_current()->parent->load_sema);
+    thread_current()->load_status=false;
     thread_exit ();
   }
-
+  thread_current()->load_status=true;
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -185,10 +180,11 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   /* Gotta! */
-  int i = 0;
-  while (i < 10000000) {
-    i++;
-  }
+  // int i = 0;
+  // while (i < 10000000) {
+  //   i++;
+  // }
+  // return -1;
   /* Pintos doesn't have hierarchical process structure to describe relationship between
      parent and child process. (e.g., init process doesn't know user process, so pintos
      would just exit before user program run.)
@@ -198,8 +194,24 @@ process_wait (tid_t child_tid UNUSED)
      * Push parent process into WAIT list until child process exits.
      * If child process normally exit, then remove the process descriptor and return exit status.
        Else (abnormally exit, e.g., kill()), return -1. */
+  struct thread *child = NULL;
+  int exit_status;
 
-  return -1;
+  child = get_child_thread_by_tid(child_tid);
+  if (child == NULL)
+    return -1;
+
+  if (child->exit_flag) {
+    exit_status = child->exit_status;
+    remove_child_thread(child_tid);
+    return exit_status;
+  }
+
+  sema_down (&child->wait_sema);
+  exit_status = child->exit_status;
+  remove_child_thread(child_tid);
+  
+  return exit_status;
 }
 
 /* Free the current process's resources. */
@@ -208,6 +220,16 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
+  /* Every opened file on process should be closed. */
+  int i;
+  for (i=2; i<FDT_MAX_SIZE; i++) {
+      if(cur->file_descriptor_table[i]!=NULL){
+      file_close(cur->file_descriptor_table[i]);
+      cur->file_descriptor_table[i]=NULL;
+    }
+  }
+  cur->next_fd = 2;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

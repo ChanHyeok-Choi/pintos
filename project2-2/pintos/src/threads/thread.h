@@ -105,10 +105,11 @@ struct thread
 
     /* Shared between thread.c and userprog/process.c & syscall.c. */
     struct thread *parent;              /* Process descriptor pointer of parent process. */
-    bool load_status;                    /* Load status of process. */
-    int exit_status;                    /* Exit status of process. */
+    bool load_status;                   /* Load status of process. Load success: true, else: false. */
+    bool exit_flag;                     /* Flag for exit. Exit success: true, else: false. */  
+    int exit_status;                    /* Exit status of process. Normally exit: 0, else: others. */
+    struct semaphore wait_sema;         /* Semaphore for wait. */
     struct semaphore load_sema;         /* Semaphore for load. */
-    struct semaphore exit_sema;         /* Semaphore for load. */
     struct list child_list;             /* List for child process. */
 
 #ifdef USERPROG
@@ -125,8 +126,8 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
-// struct thread *get_child_thread_by_tid (tid_t child_tid);
-// void remove_child_thread (struct thread *child_thread);
+struct thread *get_child_thread_by_tid (tid_t child_tid);
+void remove_child_thread (tid_t child_tid);
 
 void thread_init (void);
 void thread_start (void);
