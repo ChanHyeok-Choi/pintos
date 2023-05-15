@@ -48,7 +48,7 @@ void exit (int status) {
    opening the new file is a separate operation which would require a open system call.*/
 bool create (const char *file, unsigned initial_size) {
   if (file == NULL) {
-    exit(-1);
+    return false;
   }
   bool result = filesys_create(file, initial_size);
   return result;
@@ -67,7 +67,7 @@ int open (const char *file) {
     return -1;
   }
   // WE NEED FILE DESCRIPTOR!!!
-  int fd = process_add_file(f);
+  int fd = add_file_descriptor(f);
   lock_release(&filesys_lock);
   return fd;
 }
@@ -75,7 +75,7 @@ int open (const char *file) {
 /* Closes file descriptor fd. Exiting or terminating a process implicitly closes 
    all its open file descriptors, as if by calling this function for each one.*/
 void close (int fd) {
-  process_close_file(fd);
+  close_file_descriptor(fd);
 }
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number of bytes 
@@ -101,7 +101,7 @@ int read (int fd, void *buffer, unsigned size) {
     lock_release(&filesys_lock);
     return i;
   } else {
-    f = process_get_file(fd);
+    f = get_file_descriptor(fd);
     if (f == NULL) {
       lock_release(&filesys_lock);
       exit(-1); 
@@ -125,11 +125,11 @@ int write (int fd, const void *buffer, unsigned size) {
     lock_release(&filesys_lock);
     return size;
   } else {
-    f = process_get_file(fd);
+    f = get_file_descriptor(fd);
     /* Use lock to avoid concurrent access to file when read or write it. */
     if (f == NULL) {
       lock_release(&filesys_lock);
-      exit(-1);
+      return -1;
     }
     off_t file_size = file_write(f, buffer, size);
     lock_release(&filesys_lock);
@@ -160,8 +160,8 @@ tid_t exec(const char *cmd_line) {
   if (child != NULL) {
     sema_down (&child->load_sema);
 
-    if (child->load_status == false)
-      return -1;
+    if (!child->load_status)
+      return child->exit_status;
     else
       return tid;
   }
@@ -174,16 +174,16 @@ tid_t exec(const char *cmd_line) {
    an open file does not close it. See Removing an Open File, for details. */
 bool remove (const char *file) {
   if (file == NULL) {
-    exit(-1);
+    return false;
   }
   return filesys_remove(file);
 }
 
 /* Returns the size, in bytes, of the file open as fd. */
 int filesize (int fd) {
-  struct file *f = process_get_file(fd);
+  struct file *f = get_file_descriptor(fd);
   if (f == NULL) {
-    exit(-1);
+    return -1;
   }
   return file_length(f);
 }
@@ -192,9 +192,9 @@ int filesize (int fd) {
    expressed in bytes from the beginning of the file. (Thus, a position of 
    0 is the file's start.)*/
 void seek (int fd, unsigned position) {
-  struct file *f = process_get_file(fd);
+  struct file *f = get_file_descriptor(fd);
   if (f == NULL) {
-    exit(-1);
+    return;
   }
   file_seek(f, position);
 }
@@ -202,7 +202,7 @@ void seek (int fd, unsigned position) {
 /* Returns the position of the next byte to be read or written in open file fd,
    expressed in bytes from the beginning of the file. */
 unsigned tell (int fd) {
-  struct file *f = process_get_file(fd);
+  struct file *f = get_file_descriptor(fd);
   if (f == NULL) {
     exit(-1);
   }

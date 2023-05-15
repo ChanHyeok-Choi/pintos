@@ -23,12 +23,12 @@ static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 /* Separate creating file_descriptor function from syscall.c. */
-int process_add_file(struct file* f) {
+int add_file_descriptor(struct file* f) {
   struct thread* cur = thread_current();
   int i;
-  for(i=3;i<FDT_MAX_SIZE;i++){
-    if(cur->file_descriptor_table[i]==NULL){
-      cur->file_descriptor_table[i]=f;
+  for(i=3; i<FDT_MAX_SIZE; i++) {
+    if (cur->file_descriptor_table[i] == NULL) {
+      cur->file_descriptor_table[i] = f;
       return i;
     }
   }
@@ -36,23 +36,17 @@ int process_add_file(struct file* f) {
 }
 
 /* Separate returning file_descriptor function from syscall.c. */
-struct file* process_get_file(int fd) {
+struct file* get_file_descriptor(int fd) {
   struct thread* cur = thread_current();
-  if(fd<3 || fd>=FDT_MAX_SIZE){
-    return NULL;
-  }
   return cur->file_descriptor_table[fd];
 }
 
 /* Separate closing file_descriptor function from syscall.c. */
-void process_close_file(int fd) {
+void close_file_descriptor(int fd) {
   struct thread* cur = thread_current();
-  if(fd<3 || fd>=FDT_MAX_SIZE){
-    return;
-  }
-  if(cur->file_descriptor_table[fd]!=NULL){
+  if (cur->file_descriptor_table[fd] != NULL) {
     file_close(cur->file_descriptor_table[fd]);
-    cur->file_descriptor_table[fd]=NULL;
+    cur->file_descriptor_table[fd] = NULL;
   }
 }
 
@@ -267,10 +261,11 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
   struct thread* child;
-  struct list_elem* elem;
+  struct list_elem* e;
 
-  for(elem=list_begin(&(thread_current()->child_list)); elem!=list_end(&(thread_current()->child_list)); elem=list_next(elem)){
-    child=list_entry(elem, struct thread, child_elem);
+  /* Should wait until child process exits. */
+  for(e=list_begin(&thread_current()->child_list); e!=list_end(&thread_current()->child_list); e=list_next(e)){
+    child = list_entry(e, struct thread, child_elem);
     process_wait(child->tid);
   }
 
@@ -281,7 +276,7 @@ process_exit (void)
   /* Every opened file on process should be closed. */
   int i;
   for (i=3; i<FDT_MAX_SIZE; i++) {
-    process_close_file(i);
+    close_file_descriptor(i);
   }
 
   /* Destroy the current process's page directory and switch back
