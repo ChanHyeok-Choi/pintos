@@ -169,6 +169,46 @@ tid_t exec(const char *cmd_line) {
   return -1;
 }
 
+/* Deletes the file called file. Returns true if successful, false otherwise.
+   A file may be removed regardless of whether it is open or closed, and removing 
+   an open file does not close it. See Removing an Open File, for details. */
+bool remove (const char *file) {
+  if (file == NULL) {
+    exit(-1);
+  }
+  return filesys_remove(file);
+}
+
+/* Returns the size, in bytes, of the file open as fd. */
+int filesize (int fd) {
+  struct file *f = process_get_file(fd);
+  if (f == NULL) {
+    exit(-1);
+  }
+  return file_length(f);
+}
+
+/* Changes the next byte to be read or written in open file fd to position, 
+   expressed in bytes from the beginning of the file. (Thus, a position of 
+   0 is the file's start.)*/
+void seek (int fd, unsigned position) {
+  struct file *f = process_get_file(fd);
+  if (f == NULL) {
+    exit(-1);
+  }
+  file_seek(f, position);
+}
+
+/* Returns the position of the next byte to be read or written in open file fd,
+   expressed in bytes from the beginning of the file. */
+unsigned tell (int fd) {
+  struct file *f = process_get_file(fd);
+  if (f == NULL) {
+    exit(-1);
+  }
+  return file_tell(f);
+}
+
 /* Check if a stack pointer(or address) is in user space(or address): 0x8048000 ~ 0xc0000000. 
    If it is out of the space, then exit process.*/
 void check_user_space(void *stack_ptr) {
@@ -260,6 +300,22 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_EXEC:
       copy_arguments(f->esp, args, 1);
       f->eax = exec((const char *) args[0]);
+      break;
+    case SYS_REMOVE:
+      copy_arguments(f->esp, args, 1);
+      f->eax = remove((const char *) args[0]);
+      break;
+    case SYS_FILESIZE:
+      copy_arguments(f->esp, args, 1);
+      f->eax = filesize(args[0]);
+      break;
+    case SYS_SEEK:
+      copy_arguments(f->esp, args, 2);
+      seek(args[0], (unsigned) args[1]);
+      break;
+    case SYS_TELL:
+      copy_arguments(f->esp, args, 1);
+      f->eax = tell(args[0]);
       break;
   }
 

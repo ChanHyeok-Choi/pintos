@@ -17,6 +17,10 @@ int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
 int wait (tid_t tid);
 tid_t exec(const char *cmd_line);
+bool remove (const char *file);
+int filesize (int fd);
+void seek (int fd, unsigned position);
+unsigned tell (int fd);
 void check_user_space(void *stack_ptr);
 void copy_arguments(void *esp, int *arg, int arg_cnt);
 
