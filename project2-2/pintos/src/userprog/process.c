@@ -17,9 +17,44 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+
+/* Separate creating file_descriptor function from syscall.c. */
+int process_add_file(struct file* f) {
+  struct thread* cur = thread_current();
+  int i;
+  for(i=3;i<FDT_MAX_SIZE;i++){
+    if(cur->file_descriptor_table[i]==NULL){
+      cur->file_descriptor_table[i]=f;
+      return i;
+    }
+  }
+  return -1;
+}
+
+/* Separate returning file_descriptor function from syscall.c. */
+struct file* process_get_file(int fd) {
+  struct thread* cur = thread_current();
+  if(fd<3 || fd>=FDT_MAX_SIZE){
+    return NULL;
+  }
+  return cur->file_descriptor_table[fd];
+}
+
+/* Separate closing file_descriptor function from syscall.c. */
+void process_close_file(int fd) {
+  struct thread* cur = thread_current();
+  if(fd<3 || fd>=FDT_MAX_SIZE){
+    return;
+  }
+  if(cur->file_descriptor_table[fd]!=NULL){
+    file_close(cur->file_descriptor_table[fd]);
+    cur->file_descriptor_table[fd]=NULL;
+  }
+}
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -54,6 +89,15 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
+  }
+
+  struct list_elem* elem;
+  struct thread* t;
+  for(elem=list_begin(&thread_current()->child_list); elem!=list_end(&thread_current()->child_list); elem=list_next(elem)) {
+    t = list_entry(elem, struct thread, child_elem);
+    if (t->load_status==false) {
+      return process_wait(tid);
+    }
   }
   
   return tid;
@@ -201,15 +245,17 @@ process_wait (tid_t child_tid UNUSED)
   if (child == NULL)
     return -1;
 
-  if (child->exit_flag) {
-    exit_status = child->exit_status;
-    remove_child_thread(child_tid);
-    return exit_status;
-  }
+  // if (child->exit_flag) {
+  //   exit_status = child->exit_status;
+  //   remove_child_thread(child_tid);
+  //   return exit_status;
+  // }
 
+  /* Wait until child_process exit. */
   sema_down (&child->wait_sema);
   exit_status = child->exit_status;
-  remove_child_thread(child_tid);
+  remove_child_thread(child);
+  sema_up(&child->exit_sema);
   
   return exit_status;
 }
@@ -220,16 +266,23 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  struct thread* child;
+  struct list_elem* elem;
+
+  for(elem=list_begin(&(thread_current()->child_list)); elem!=list_end(&(thread_current()->child_list)); elem=list_next(elem)){
+    child=list_entry(elem, struct thread, child_elem);
+    process_wait(child->tid);
+  }
+
+  /* Current process close current executing file, automatically file_allow_write() done. */
+  // Error: Kernel PANIC at ../../filesys/inode.c:336 in inode_allow_write(): assertion `inode->deny_write_cnt <= inode->open_cnt' failed.
+  // file_close(cur->executing_file);
 
   /* Every opened file on process should be closed. */
   int i;
-  for (i=2; i<FDT_MAX_SIZE; i++) {
-      if(cur->file_descriptor_table[i]!=NULL){
-      file_close(cur->file_descriptor_table[i]);
-      cur->file_descriptor_table[i]=NULL;
-    }
+  for (i=3; i<FDT_MAX_SIZE; i++) {
+    process_close_file(i);
   }
-  cur->next_fd = 2;
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -354,13 +407,20 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  lock_acquire(&filesys_lock);
   /* Open executable file. */
   file = filesys_open (file_name);
   if (file == NULL) 
     {
+      lock_release(&filesys_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+
+  /* Prevent program file from changing when loaded to memory. */
+  t->executing_file = file;
+  file_deny_write(file);
+  lock_release(&filesys_lock);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr

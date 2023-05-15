@@ -81,7 +81,7 @@ struct thread *get_child_thread_by_tid (tid_t child_tid) {
   struct list_elem* e;
   struct thread* cur = thread_current();
   for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
-    struct thread* ct = list_entry(e, struct thread, elem);
+    struct thread* ct = list_entry(e, struct thread, child_elem);
     if (ct->tid == child_tid) {
       return ct;
     }
@@ -90,20 +90,8 @@ struct thread *get_child_thread_by_tid (tid_t child_tid) {
 }
 
 // /* After removing process descriptor from child list, free memory. */
-void remove_child_thread (tid_t child_tid) {
-  struct thread *ct = thread_current();
-  struct list_elem *child;
- 	struct thread *t;
-
-  for(child=list_begin(&ct->child_list); child!=list_end(&ct->child_list); child=list_next(child)) {
- 		t = list_entry(child, struct thread, elem);
- 		
- 		if(child_tid == t->tid){
- 			list_remove(child);
-      palloc_free_page(t);
- 			return;
- 		}
- 	}
+void remove_child_thread (struct thread *ct) {
+  list_remove(&ct->child_elem);
 }
 
 /* Initializes the threading system by transforming the code
@@ -221,11 +209,11 @@ thread_create (const char *name, int priority,
   tid = t->tid = allocate_tid ();
 
   t->parent = running_thread();
-  t->load_status = true;
   t->exit_flag = false;
   sema_init(&t->wait_sema, 0);
   sema_init(&t->load_sema, 0);
-  list_push_back(&running_thread()->child_list, &t->elem);
+  sema_init(&t->exit_sema, 0);
+  list_push_back(&running_thread()->child_list, &t->child_elem);
 
   /* Allocate file desciptor table, then initiate it. */
   t->file_descriptor_table = palloc_get_page(PAL_ZERO);
@@ -393,11 +381,13 @@ thread_exit (void)
   process_exit ();
 #endif
 
-  if (thread_current ()->parent != NULL) {
-    struct thread *cur = thread_current ();
-    cur->exit_flag = true;
-    sema_up (&cur->wait_sema);
-  } // notice that child process exit to waiting parent process.
+  // struct thread *cur = thread_current ();
+  // if (cur->parent != NULL) {
+  //   cur->exit_flag = true;
+  //   sema_up (&cur->wait_sema);
+  // } // notice that child process exit to waiting parent process.
+  sema_up (&thread_current()->wait_sema);
+  sema_down(&thread_current()->exit_sema);
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
@@ -676,7 +666,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
   
-  list_init (&running_thread()->child_list);
+  list_init (&t->child_list);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -748,7 +738,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      // palloc_free_page (prev);
+      palloc_free_page (prev);
     }
 }
 

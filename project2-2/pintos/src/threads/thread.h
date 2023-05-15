@@ -110,7 +110,11 @@ struct thread
     int exit_status;                    /* Exit status of process. Normally exit: 0, else: others. */
     struct semaphore wait_sema;         /* Semaphore for wait. */
     struct semaphore load_sema;         /* Semaphore for load. */
+    struct semaphore exit_sema;         /* Semaphore for exit and avoiding memory leak. */
     struct list child_list;             /* List for child process. */
+    struct list_elem child_elem;        /* Child process element. */
+
+    struct file* executing_file;        /* Current executing file. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -127,7 +131,7 @@ struct thread
 extern bool thread_mlfqs;
 
 struct thread *get_child_thread_by_tid (tid_t child_tid);
-void remove_child_thread (tid_t child_tid);
+void remove_child_thread (struct thread *ct);
 
 void thread_init (void);
 void thread_start (void);

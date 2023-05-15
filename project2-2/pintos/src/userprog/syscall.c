@@ -50,9 +50,7 @@ bool create (const char *file, unsigned initial_size) {
   if (file == NULL) {
     exit(-1);
   }
-  lock_acquire (&filesys_lock);
   bool result = filesys_create(file, initial_size);
-  lock_release(&filesys_lock);
   return result;
 }
 
@@ -62,38 +60,34 @@ int open (const char *file) {
   if (file == NULL) {
     return -1;
   }
-  lock_acquire (&filesys_lock);
+  lock_acquire(&filesys_lock);
   struct file *f = filesys_open(file);
-  lock_release(&filesys_lock);
   if (f == NULL) {
+    lock_release(&filesys_lock);
     return -1;
   }
   // WE NEED FILE DESCRIPTOR!!!
-  struct thread *cur = thread_current();
-  int fd = cur->next_fd++;
-  cur->file_descriptor_table[fd] = f;
+  int fd = process_add_file(f);
+  lock_release(&filesys_lock);
   return fd;
 }
 
 /* Closes file descriptor fd. Exiting or terminating a process implicitly closes 
    all its open file descriptors, as if by calling this function for each one.*/
 void close (int fd) {
-  struct thread *cur = thread_current();
-  struct file *f = cur->file_descriptor_table[fd];
-  lock_acquire (&filesys_lock);
-  file_close(f);
-  lock_release(&filesys_lock);
-  cur->file_descriptor_table[fd] = NULL;
+  process_close_file(fd);
 }
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number of bytes 
    actually read (0 at end of file), or -1 if the file could not be read (due to a 
    condition other than end of file). Fd 0 reads from the keyboard using input_getc().*/
 int read (int fd, void *buffer, unsigned size) {
-  struct thread *cur = thread_current();
   struct file *f;
   int file_size;
+
+  check_user_space(buffer);
   
+  lock_acquire (&filesys_lock);
   if (fd == 0) {
     /* Read input from keyboard. */
     char *buffer_ = buffer;
@@ -104,15 +98,14 @@ int read (int fd, void *buffer, unsigned size) {
         break;
       }
     }
+    lock_release(&filesys_lock);
     return i;
-  } else if (fd == 1) {
-    return -1;
   } else {
-    f = cur->file_descriptor_table[fd];
+    f = process_get_file(fd);
     if (f == NULL) {
-      return -1; 
+      lock_release(&filesys_lock);
+      exit(-1); 
     }
-    lock_acquire (&filesys_lock);
     file_size = file_read(f, buffer, size);
     lock_release(&filesys_lock);
   }
@@ -124,18 +117,20 @@ int read (int fd, void *buffer, unsigned size) {
 int write (int fd, const void *buffer, unsigned size) {
   /* We should implenment only the following: 
      If fd == 1, writes to console: call putbuf(buffer, size) and return size. */
-  struct thread *cur = thread_current();
-  struct file *f = cur->file_descriptor_table[fd];
+  struct file *f;
   
+  lock_acquire(&filesys_lock);
   if (fd == 1) {
     putbuf(buffer, size);
+    lock_release(&filesys_lock);
     return size;
   } else {
+    f = process_get_file(fd);
     /* Use lock to avoid concurrent access to file when read or write it. */
     if (f == NULL) {
-      return -1;
+      lock_release(&filesys_lock);
+      exit(-1);
     }
-    lock_acquire(&filesys_lock);
     off_t file_size = file_write(f, buffer, size);
     lock_release(&filesys_lock);
     return (int) file_size;
@@ -165,7 +160,7 @@ tid_t exec(const char *cmd_line) {
   if (child != NULL) {
     sema_down (&child->load_sema);
 
-    if (!child->load_status)
+    if (child->load_status == false)
       return -1;
     else
       return tid;
