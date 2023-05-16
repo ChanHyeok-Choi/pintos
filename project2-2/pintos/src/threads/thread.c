@@ -402,13 +402,6 @@ thread_exit (void)
   if (cur->exit_flag == false) {
     sema_up (&cur->wait_sema);
   }
-  // struct thread *cur = thread_current ();
-  // if (cur->parent != NULL) {
-  //   cur->exit_flag = true;
-  //   sema_up (&cur->wait_sema);
-  // } // notice that child process exit to waiting parent process.
-  // thread_current()->exit_flag = true;
-  // sema_up (&thread_current()->wait_sema);
   sema_down(&thread_current()->exit_sema);
 
   /* Remove thread from all threads list, set our status to dying,

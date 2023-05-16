@@ -78,6 +78,11 @@ process_execute (const char *file_name)
 
   first_token = strtok_r(cmd, " ", &save_ptr);
 
+  /* Handle to exec-missing. */
+  if (filesys_open(first_token) == NULL) {
+    return -1;
+  }
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   
