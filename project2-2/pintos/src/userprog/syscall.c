@@ -48,7 +48,7 @@ void exit (int status) {
    opening the new file is a separate operation which would require a open system call.*/
 bool create (const char *file, unsigned initial_size) {
   if (file == NULL) {
-    return false;
+    exit(-1);
   }
   bool result = filesys_create(file, initial_size);
   return result;
@@ -58,7 +58,7 @@ bool create (const char *file, unsigned initial_size) {
    "file descriptor" (fd), or -1 if the file could not be opened.*/
 int open (const char *file) {
   if (file == NULL) {
-    return -1;
+    exit(-1);
   }
   lock_acquire(&filesys_lock);
   struct file *f = filesys_open(file);
@@ -118,6 +118,8 @@ int write (int fd, const void *buffer, unsigned size) {
   /* We should implenment only the following: 
      If fd == 1, writes to console: call putbuf(buffer, size) and return size. */
   struct file *f;
+
+  // check_user_space(buffer);
   
   lock_acquire(&filesys_lock);
   if (fd == 1) {
@@ -151,22 +153,10 @@ int wait (tid_t tid) {
    The new process is loaded and scheduled to run.
    Returns the process ID (tid) of the new process, or -1 if the execution fails. */
 tid_t exec(const char *cmd_line) {
-  tid_t tid;
-  struct thread *child;
-
-  tid = process_execute (cmd_line);
-  child = get_child_thread_by_tid (tid);
-
-  if (child != NULL) {
-    sema_down (&child->load_sema);
-
-    if (!child->load_status)
-      return child->exit_status;
-    else
-      return tid;
-  }
-
-  return -1;
+  tid_t tid = process_execute(cmd_line);
+  /* If the child process was created successfully, wait for the child process to be loaded into memory */
+  
+  return tid;
 }
 
 /* Deletes the file called file. Returns true if successful, false otherwise.
@@ -174,7 +164,7 @@ tid_t exec(const char *cmd_line) {
    an open file does not close it. See Removing an Open File, for details. */
 bool remove (const char *file) {
   if (file == NULL) {
-    return false;
+    exit(-1);
   }
   return filesys_remove(file);
 }
@@ -183,7 +173,7 @@ bool remove (const char *file) {
 int filesize (int fd) {
   struct file *f = get_file_descriptor(fd);
   if (f == NULL) {
-    return -1;
+    exit(-1);
   }
   return file_length(f);
 }
@@ -194,7 +184,7 @@ int filesize (int fd) {
 void seek (int fd, unsigned position) {
   struct file *f = get_file_descriptor(fd);
   if (f == NULL) {
-    return;
+    exit(-1);
   }
   file_seek(f, position);
 }

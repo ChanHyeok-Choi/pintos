@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -91,7 +92,9 @@ struct thread *get_child_thread_by_tid (tid_t child_tid) {
 
 // /* After removing process descriptor from child list, free memory. */
 void remove_child_thread (struct thread *ct) {
+  /* wait-simple error: (wait-simple) wait(exec()) = -1 */
   list_remove(&ct->child_elem);
+  // free(ct);
 }
 
 /* Initializes the threading system by transforming the code
@@ -380,13 +383,32 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
 #endif
-
+  
+  struct thread *cur = thread_current ();
+  if (cur->parent != NULL) {
+    struct thread *parent = cur->parent;
+    struct list_elem *e;
+    for(e=list_begin(&parent->child_list); e!=list_end(&parent->child_list); e=list_next(e)){
+      struct thread *child = list_entry (e, struct thread, child_elem);
+      // if (child == cur) {
+        /* Set the exit status in the child process descriptor */
+        child->exit_status = cur->exit_status;
+        /* Remove the child process descriptor from the parent's child list */
+        remove_child_thread(child);
+      // }
+    }
+  }
+  /* Wake up the parent process waiting in process_wait() */
+  if (cur->exit_flag == false) {
+    sema_up (&cur->wait_sema);
+  }
   // struct thread *cur = thread_current ();
   // if (cur->parent != NULL) {
   //   cur->exit_flag = true;
   //   sema_up (&cur->wait_sema);
   // } // notice that child process exit to waiting parent process.
-  sema_up (&thread_current()->wait_sema);
+  // thread_current()->exit_flag = true;
+  // sema_up (&thread_current()->wait_sema);
   sema_down(&thread_current()->exit_sema);
 
   /* Remove thread from all threads list, set our status to dying,

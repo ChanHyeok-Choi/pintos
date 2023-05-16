@@ -15,6 +15,7 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
@@ -83,15 +84,6 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
-  }
-
-  struct list_elem* elem;
-  struct thread* t;
-  for(elem=list_begin(&thread_current()->child_list); elem!=list_end(&thread_current()->child_list); elem=list_next(elem)) {
-    t = list_entry(elem, struct thread, child_elem);
-    if (t->load_status==false) {
-      return process_wait(tid);
-    }
   }
   
   return tid;
@@ -232,26 +224,17 @@ process_wait (tid_t child_tid UNUSED)
      * Push parent process into WAIT list until child process exits.
      * If child process normally exit, then remove the process descriptor and return exit status.
        Else (abnormally exit, e.g., kill()), return -1. */
-  struct thread *child = NULL;
-  int exit_status;
+  struct thread *child = get_child_thread_by_tid(child_tid);
 
-  child = get_child_thread_by_tid(child_tid);
   if (child == NULL)
-    return -1;
+    return -1; // Return -1 if child process not found
 
-  // if (child->exit_flag) {
-  //   exit_status = child->exit_status;
-  //   remove_child_thread(child_tid);
-  //   return exit_status;
-  // }
-
-  /* Wait until child_process exit. */
-  sema_down (&child->wait_sema);
-  exit_status = child->exit_status;
-  remove_child_thread(child);
+  sema_down(&child->wait_sema); // Wait until child process exits
+  int exit_status = child->exit_status;
+  remove_child_thread(child); // Remove child from the child_list
   sema_up(&child->exit_sema);
-  
-  return exit_status;
+
+  return exit_status; // Return the exit status
 }
 
 /* Free the current process's resources. */
@@ -260,18 +243,10 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-  struct thread* child;
-  struct list_elem* e;
-
-  /* Should wait until child process exits. */
-  for(e=list_begin(&thread_current()->child_list); e!=list_end(&thread_current()->child_list); e=list_next(e)){
-    child = list_entry(e, struct thread, child_elem);
-    process_wait(child->tid);
-  }
 
   /* Current process close current executing file, automatically file_allow_write() done. */
   // Error: Kernel PANIC at ../../filesys/inode.c:336 in inode_allow_write(): assertion `inode->deny_write_cnt <= inode->open_cnt' failed.
-  // file_close(cur->executing_file);
+  file_close(cur->executing_file);
 
   /* Every opened file on process should be closed. */
   int i;
@@ -500,7 +475,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  // file_close (file);
   return success;
 }
 
