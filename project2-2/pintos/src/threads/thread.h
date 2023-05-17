@@ -110,7 +110,6 @@ struct thread
     int exit_status;                    /* Exit status of process. Normally exit: 0, else: others. */
     struct semaphore wait_sema;         /* Semaphore for wait. */
     struct semaphore load_sema;         /* Semaphore for load. */
-    struct semaphore exit_sema;         /* Semaphore for exit and avoiding memory leak. */
     struct list child_list;             /* List for child process. */
     struct list_elem child_elem;        /* Child process element. */
 

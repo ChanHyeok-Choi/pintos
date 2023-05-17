@@ -11,7 +11,6 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "threads/malloc.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -93,8 +92,10 @@ struct thread *get_child_thread_by_tid (tid_t child_tid) {
 // /* After removing process descriptor from child list, free memory. */
 void remove_child_thread (struct thread *ct) {
   /* wait-simple error: (wait-simple) wait(exec()) = -1 */
-  list_remove(&ct->child_elem);
-  // free(ct);
+  if (ct != NULL) {
+    list_remove(&ct->child_elem);
+    // palloc_free_page(ct);
+  }
 }
 
 /* Initializes the threading system by transforming the code
@@ -215,7 +216,6 @@ thread_create (const char *name, int priority,
   t->exit_flag = false;
   sema_init(&t->wait_sema, 0);
   sema_init(&t->load_sema, 0);
-  sema_init(&t->exit_sema, 0);
   list_push_back(&running_thread()->child_list, &t->child_elem);
 
   /* Allocate file desciptor table, then initiate it. */
@@ -402,7 +402,6 @@ thread_exit (void)
   if (cur->exit_flag == false) {
     sema_up (&cur->wait_sema);
   }
-  sema_down(&thread_current()->exit_sema);
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us

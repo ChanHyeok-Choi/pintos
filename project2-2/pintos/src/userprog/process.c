@@ -15,7 +15,6 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
-#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
@@ -237,7 +236,6 @@ process_wait (tid_t child_tid UNUSED)
   sema_down(&child->wait_sema); // Wait until child process exits
   int exit_status = child->exit_status;
   remove_child_thread(child); // Remove child from the child_list
-  sema_up(&child->exit_sema);
 
   return exit_status; // Return the exit status
 }
