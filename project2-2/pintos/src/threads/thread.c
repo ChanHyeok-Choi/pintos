@@ -390,12 +390,12 @@ thread_exit (void)
     struct list_elem *e;
     for(e=list_begin(&parent->child_list); e!=list_end(&parent->child_list); e=list_next(e)){
       struct thread *child = list_entry (e, struct thread, child_elem);
-      // if (child == cur) {
+      if (child == cur) {
         /* Set the exit status in the child process descriptor */
         child->exit_status = cur->exit_status;
         /* Remove the child process descriptor from the parent's child list */
         remove_child_thread(child);
-      // }
+      }
     }
   }
   /* Wake up the parent process waiting in process_wait() */

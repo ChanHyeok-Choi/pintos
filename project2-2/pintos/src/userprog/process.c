@@ -235,7 +235,6 @@ process_wait (tid_t child_tid UNUSED)
 
   sema_down(&child->wait_sema); // Wait until child process exits
   int exit_status = child->exit_status;
-  remove_child_thread(child); // Remove child from the child_list
 
   return exit_status; // Return the exit status
 }
