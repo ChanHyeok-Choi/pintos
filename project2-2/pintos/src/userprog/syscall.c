@@ -68,6 +68,7 @@ int open (const char *file) {
   }
   // WE NEED FILE DESCRIPTOR!!!
   int fd = add_file_descriptor(f);
+  thread_current()->next_fd++;
   lock_release(&filesys_lock);
   return fd;
 }
@@ -76,6 +77,7 @@ int open (const char *file) {
    all its open file descriptors, as if by calling this function for each one.*/
 void close (int fd) {
   close_file_descriptor(fd);
+  thread_current()->next_fd--;
 }
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number of bytes 
@@ -155,7 +157,14 @@ int wait (tid_t tid) {
 tid_t exec(const char *cmd_line) {
   tid_t tid = process_execute(cmd_line);
   /* If the child process was created successfully, wait for the child process to be loaded into memory */
-  
+  // if (tid != -1) {
+  //   struct thread *child = get_child_thread_by_tid(tid);
+  //   // struct thread *parent = thread_current();
+  //   sema_down(&child->load_sema);
+    
+  //   if (!child->load_status)
+  //     return -1;
+  // }
   return tid;
 }
 

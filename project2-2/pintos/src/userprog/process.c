@@ -29,9 +29,11 @@ int add_file_descriptor(struct file* f) {
   for(i=3; i<FDT_MAX_SIZE; i++) {
     if (cur->file_descriptor_table[i] == NULL) {
       cur->file_descriptor_table[i] = f;
+      cur->next_fd++;
       return i;
     }
   }
+  cur->next_fd = FDT_MAX_SIZE;
   return -1;
 }
 
@@ -78,9 +80,12 @@ process_execute (const char *file_name)
   first_token = strtok_r(cmd, " ", &save_ptr);
 
   /* Handle to exec-missing. */
+  lock_acquire(&filesys_lock);
   if (filesys_open(first_token) == NULL) {
+    lock_release(&filesys_lock);
     return -1;
   }
+  lock_release(&filesys_lock);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
@@ -181,15 +186,16 @@ start_process (void *file_name_)
     // We need to stack arguments into use stack!
     save_user_stack(tokens, arg_cnt, &if_.esp);
     // hex_dump((uintptr_t)if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
-    sema_up (&thread_current()->load_sema);
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    thread_current()->load_status=false;
+    // thread_current()->load_status=false;
     thread_exit ();
   }
-  thread_current()->load_status=true;
+  // thread_current()->load_status=true;
+  // sema_up (&thread_current()->load_sema);
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -213,12 +219,6 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  /* Gotta! */
-  // int i = 0;
-  // while (i < 10000000) {
-  //   i++;
-  // }
-  // return -1;
   /* Pintos doesn't have hierarchical process structure to describe relationship between
      parent and child process. (e.g., init process doesn't know user process, so pintos
      would just exit before user program run.)
@@ -233,8 +233,11 @@ process_wait (tid_t child_tid UNUSED)
   if (child == NULL)
     return -1; // Return -1 if child process not found
 
+  thread_current()->wait_flag = true;
   sema_down(&child->wait_sema); // Wait until child process exits
   int exit_status = child->exit_status;
+  remove_child_thread(child);
+  sema_up(&child->exit_sema);
 
   return exit_status; // Return the exit status
 }

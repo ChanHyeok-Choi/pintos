@@ -213,9 +213,9 @@ thread_create (const char *name, int priority,
   tid = t->tid = allocate_tid ();
 
   t->parent = running_thread();
-  t->exit_flag = false;
   sema_init(&t->wait_sema, 0);
-  sema_init(&t->load_sema, 0);
+  // sema_init(&t->load_sema, 0);
+  sema_init(&t->exit_sema, 0);
   list_push_back(&running_thread()->child_list, &t->child_elem);
 
   /* Allocate file desciptor table, then initiate it. */
@@ -385,23 +385,24 @@ thread_exit (void)
 #endif
   
   struct thread *cur = thread_current ();
-  if (cur->parent != NULL) {
-    struct thread *parent = cur->parent;
-    struct list_elem *e;
-    for(e=list_begin(&parent->child_list); e!=list_end(&parent->child_list); e=list_next(e)){
-      struct thread *child = list_entry (e, struct thread, child_elem);
-      if (child == cur) {
-        /* Set the exit status in the child process descriptor */
-        child->exit_status = cur->exit_status;
-        /* Remove the child process descriptor from the parent's child list */
-        remove_child_thread(child);
-      }
-    }
-  }
+  // if (cur->parent != NULL) {
+  //   struct thread *parent = cur->parent;
+  //   struct list_elem *e;
+  //   for(e=list_begin(&parent->child_list); e!=list_end(&parent->child_list); e=list_next(e)) {
+  //     struct thread *child = list_entry (e, struct thread, child_elem);
+  //     if (child == cur) {
+  //       /* Set the exit status in the child process descriptor */
+  //       // child->exit_status = cur->exit_status;
+  //       // process_wait(child->tid);
+  //       /* Remove the child process descriptor from the parent's child list */
+  //       // child->exit_flag = true;
+  //       remove_child_thread(child);
+  //     }
+  //   }
+  // }
   /* Wake up the parent process waiting in process_wait() */
-  if (cur->exit_flag == false) {
-    sema_up (&cur->wait_sema);
-  }
+  sema_up (&cur->wait_sema);
+  sema_down(&cur->exit_sema);
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
