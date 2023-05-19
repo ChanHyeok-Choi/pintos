@@ -29,7 +29,6 @@ int add_file_descriptor(struct file* f) {
   for(i=3; i<FDT_MAX_SIZE; i++) {
     if (cur->file_descriptor_table[i] == NULL) {
       cur->file_descriptor_table[i] = f;
-      cur->next_fd++;
       return i;
     }
   }
@@ -90,10 +89,20 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   
+  // struct thread *cur = thread_current();
+  // sema_down(&cur->load_sema);
+  
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
   }
+
+  // struct list_elem *e;
+  // for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+  //   struct thread *child = list_entry(e, struct thread, child_elem);
+  //   if (child->exit_status == -1)
+  //     return process_wait(tid);
+  // }
   
   return tid;
 }
@@ -194,7 +203,7 @@ start_process (void *file_name_)
     thread_exit ();
   }
   // thread_current()->load_status=true;
-  // sema_up (&thread_current()->load_sema);
+  // sema_up (&thread_current()->parent->load_sema);
 
 
   /* Start the user process by simulating a return from an
@@ -233,11 +242,13 @@ process_wait (tid_t child_tid UNUSED)
   if (child == NULL)
     return -1; // Return -1 if child process not found
 
-  thread_current()->wait_flag = true;
+  // thread_current()->wait_flag = true;
   sema_down(&child->wait_sema); // Wait until child process exits
   int exit_status = child->exit_status;
-  remove_child_thread(child);
-  sema_up(&child->exit_sema);
+
+  /* Handle sync-read and sync-write issues. */
+  if (exit_status != -1)
+    remove_child_thread(child);
 
   return exit_status; // Return the exit status
 }

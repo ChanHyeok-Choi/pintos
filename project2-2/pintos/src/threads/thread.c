@@ -215,7 +215,6 @@ thread_create (const char *name, int priority,
   t->parent = running_thread();
   sema_init(&t->wait_sema, 0);
   // sema_init(&t->load_sema, 0);
-  sema_init(&t->exit_sema, 0);
   list_push_back(&running_thread()->child_list, &t->child_elem);
 
   /* Allocate file desciptor table, then initiate it. */
@@ -402,7 +401,6 @@ thread_exit (void)
   // }
   /* Wake up the parent process waiting in process_wait() */
   sema_up (&cur->wait_sema);
-  sema_down(&cur->exit_sema);
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us

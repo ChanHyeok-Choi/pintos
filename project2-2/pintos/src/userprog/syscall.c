@@ -77,7 +77,7 @@ int open (const char *file) {
    all its open file descriptors, as if by calling this function for each one.*/
 void close (int fd) {
   close_file_descriptor(fd);
-  thread_current()->next_fd--;
+  // thread_current()->next_fd--;
 }
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number of bytes 
@@ -89,7 +89,6 @@ int read (int fd, void *buffer, unsigned size) {
 
   check_user_space(buffer);
   
-  lock_acquire (&filesys_lock);
   if (fd == 0) {
     /* Read input from keyboard. */
     char *buffer_ = buffer;
@@ -100,14 +99,13 @@ int read (int fd, void *buffer, unsigned size) {
         break;
       }
     }
-    lock_release(&filesys_lock);
     return i;
   } else {
     f = get_file_descriptor(fd);
     if (f == NULL) {
-      lock_release(&filesys_lock);
       exit(-1); 
     }
+    lock_acquire(&filesys_lock);
     file_size = file_read(f, buffer, size);
     lock_release(&filesys_lock);
   }
@@ -123,18 +121,16 @@ int write (int fd, const void *buffer, unsigned size) {
 
   // check_user_space(buffer);
   
-  lock_acquire(&filesys_lock);
   if (fd == 1) {
     putbuf(buffer, size);
-    lock_release(&filesys_lock);
     return size;
   } else {
     f = get_file_descriptor(fd);
     /* Use lock to avoid concurrent access to file when read or write it. */
     if (f == NULL) {
-      lock_release(&filesys_lock);
       return -1;
     }
+    lock_acquire(&filesys_lock);
     off_t file_size = file_write(f, buffer, size);
     lock_release(&filesys_lock);
     return (int) file_size;
