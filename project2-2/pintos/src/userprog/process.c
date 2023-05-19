@@ -25,15 +25,9 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 /* Separate creating file_descriptor function from syscall.c. */
 int add_file_descriptor(struct file* f) {
   struct thread* cur = thread_current();
-  int i;
-  for(i=3; i<FDT_MAX_SIZE; i++) {
-    if (cur->file_descriptor_table[i] == NULL) {
-      cur->file_descriptor_table[i] = f;
-      return i;
-    }
-  }
-  cur->next_fd = FDT_MAX_SIZE;
-  return -1;
+  cur->file_descriptor_table[cur->next_fd] = f;
+  int fd = cur->next_fd++;
+  return fd;
 }
 
 /* Separate returning file_descriptor function from syscall.c. */
@@ -96,13 +90,6 @@ process_execute (const char *file_name)
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
   }
-
-  // struct list_elem *e;
-  // for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
-  //   struct thread *child = list_entry(e, struct thread, child_elem);
-  //   if (child->exit_status == -1)
-  //     return process_wait(tid);
-  // }
   
   return tid;
 }
@@ -199,11 +186,11 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    // thread_current()->load_status=false;
+    thread_current()->load_status=false;
     thread_exit ();
   }
-  // thread_current()->load_status=true;
-  // sema_up (&thread_current()->parent->load_sema);
+  thread_current()->load_status=true;
+  sema_up (&thread_current()->load_sema);
 
 
   /* Start the user process by simulating a return from an

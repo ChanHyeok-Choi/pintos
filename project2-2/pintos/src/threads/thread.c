@@ -214,7 +214,7 @@ thread_create (const char *name, int priority,
 
   t->parent = running_thread();
   sema_init(&t->wait_sema, 0);
-  // sema_init(&t->load_sema, 0);
+  sema_init(&t->load_sema, 0);
   list_push_back(&running_thread()->child_list, &t->child_elem);
 
   /* Allocate file desciptor table, then initiate it. */

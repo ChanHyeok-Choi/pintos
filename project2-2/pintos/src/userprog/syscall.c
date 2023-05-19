@@ -68,7 +68,6 @@ int open (const char *file) {
   }
   // WE NEED FILE DESCRIPTOR!!!
   int fd = add_file_descriptor(f);
-  thread_current()->next_fd++;
   lock_release(&filesys_lock);
   return fd;
 }
