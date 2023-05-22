@@ -93,8 +93,11 @@ struct thread {
     int next_fd;                         - Next file descripter. 
     ...
     struct thread *parent;               - Process descriptor pointer of parent process.
-    int exit_status;                     - Exit status of process. Normally exit: 0, else: others.
+    bool load_status;                    - Load status of process. Normal load: True, else: False.
+    bool exit_flag;                      - Exit flag to check whether a thread terminates or not. 
+    int exit_status;                     - Exit status of process. Normal exit: 0, else: others.
     struct semaphore wait_sema;          - Semaphore for wait.
+    struct semaphore load_sema;          - Semaphore for load.
     struct list child_list;              - List for child process.
     struct list_elem child_elem;         - Child process element.
 
@@ -167,7 +170,7 @@ So, once a thread is created, a child list will be initialized, and the created 
 Also, wait semaphore will be initialized.
 
 int process_wait (tid_t child_tid UNUSED):
-    It searches child process descriptor (thread) by get_child_thread_by_tid(), which returns child process desciptor (thread)
+    It searches child process descriptor(=thread) by get_child_thread_by_tid(), which returns child process desciptor
     by child_tid. Then, it let the parent process be wait status until child process exit by sema_down(). If child process
     normally exit, it removes the child process descriptor and returns the exit status. If not (e.g., kill()), it returns -1.
 
@@ -201,7 +204,14 @@ the process exit. This task is executed in syscall_handler() before running each
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+We introduced load_status (bool type), load_sema (semaphore) and parent (struct thread) to ensure that a thread cannot return
+before the new thread has completed loading. 
 
+When creating process succeeds, exec() will return tid of it, but if not, return -1. When exec() is called, we designed that
+process_execute() is called. In detail, we designed that parent process waits until child process complete loading program 
+to memory by using load_sema. I.e., if load is failed, parent process would wait, but if not, child process would execute by
+sema_up(load_sema). Therefore the load success/failure status will be passed back to the thread that calls exec() by member 
+variable load_status.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -209,6 +219,26 @@ the process exit. This task is executed in syscall_handler() before running each
 >> that all resources are freed in each case?  How about when P
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
+
+To avoid race conditions and ensure synchronization, we used wait_sema (semaphore) in struct thread.
+A process exit status will be saved in exit() system call to check whether the process exit normally or not. 
+And we annotated a specific line in thread_schedule_tail() in order not to remove thread that has THREAD_DYING.
+
+case 1: P calls wait(C) before C exits.
+    To check an information of process, get_child_thread_by_tid() function was defined. Then, if it is killed (returnd by -1),
+    wait() system call will return -1. If C is not terminated, P will be in waiting status by downing wait_sema.
+    After then, it would remove C.
+
+case 2: P calls wait(C) after C exits.
+    After P being wait by sema_down(wait_sema), whether child process terminates normally or not will be checked by exit_flag.
+
+case 3: P terminates without waiting, before C exits.
+    When parent process is terminated early than children processes, all children processes
+    of parent process will be freed in thread_exit(), then parent process leaves from waiting status
+    by sema_up(wait_sema).
+
+case 4: P terminates without waiting, after C exits.
+    This is same as case 3, so all resources of P will be freed.
 
 ---- RATIONALE ----
 

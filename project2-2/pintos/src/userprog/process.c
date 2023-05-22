@@ -83,13 +83,19 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_token, PRI_DEFAULT, start_process, fn_copy);
   
-  // struct thread *cur = thread_current();
-  // sema_down(&cur->load_sema);
-  
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd);
+    /* Handle to multi-oom error.   */
+    sema_down(&thread_current()->load_sema);
+    struct thread* t = get_child_thread_by_tid(tid);
+    if (!t->load_status)
+      return process_wait(tid);
   }
+  
+
+  // if (child->load_status)
+  //   return process_wait(tid);
   
   return tid;
 }
@@ -190,7 +196,7 @@ start_process (void *file_name_)
     thread_exit ();
   }
   thread_current()->load_status=true;
-  sema_up (&thread_current()->load_sema);
+  sema_up(&thread_current()->load_sema);
 
 
   /* Start the user process by simulating a return from an
@@ -231,10 +237,14 @@ process_wait (tid_t child_tid UNUSED)
 
   // thread_current()->wait_flag = true;
   sema_down(&child->wait_sema); // Wait until child process exits
-  int exit_status = child->exit_status;
+  
+  int exit_status = -1;
+  if (child->exit_flag) {
+    exit_status = child->exit_status;
+  }
 
   /* Handle sync-read and sync-write issues. */
-  if (exit_status != -1)
+  // if (exit_status != -1)
     remove_child_thread(child);
 
   return exit_status; // Return the exit status

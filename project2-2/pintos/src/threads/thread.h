@@ -105,8 +105,9 @@ struct thread
 
     /* Shared between thread.c and userprog/process.c & syscall.c. */
     struct thread *parent;              /* Process descriptor pointer of parent process. */
-    bool load_status;                    /* Load status of process. */
-    int exit_status;                    /* Exit status of process. Normally exit: 0, else: others. */
+    bool load_status;                   /* Load status of process. Normal load: True, else: False. */
+    bool exit_flag;                     /* Exit flag to check whether a thread terminates or not. */
+    int exit_status;                    /* Exit status of process. Normal exit: 0, else: others. */
     struct semaphore wait_sema;         /* Semaphore for wait. */
     struct semaphore load_sema;         /* Semaphore for load. */
     struct list child_list;             /* List for child process. */

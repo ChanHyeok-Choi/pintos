@@ -213,6 +213,7 @@ thread_create (const char *name, int priority,
   tid = t->tid = allocate_tid ();
 
   t->parent = running_thread();
+  t->exit_flag = false;
   sema_init(&t->wait_sema, 0);
   sema_init(&t->load_sema, 0);
   list_push_back(&running_thread()->child_list, &t->child_elem);
@@ -384,6 +385,7 @@ thread_exit (void)
 #endif
   
   struct thread *cur = thread_current ();
+  cur->exit_flag = true;
   // if (cur->parent != NULL) {
   //   struct thread *parent = cur->parent;
   //   struct list_elem *e;

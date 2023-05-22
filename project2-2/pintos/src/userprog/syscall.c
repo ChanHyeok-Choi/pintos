@@ -152,13 +152,14 @@ int wait (tid_t tid) {
 tid_t exec(const char *cmd_line) {
   tid_t tid = process_execute(cmd_line);
   /* If the child process was created successfully, wait for the child process to be loaded into memory */
-  // if (tid != -1) {
-  //   struct thread *child = get_child_thread_by_tid(tid);
-  //   // struct thread *parent = thread_current();
-  //   sema_down(&child->load_sema);
+  // if (tid == -1) {
+    // struct thread *child = get_child_thread_by_tid(tid);
+    // struct thread *parent = thread_current();
+    // sema_down(&parent->load_sema);
     
-  //   if (!child->load_status)
-  //     return -1;
+    // if (!parent->load_status) {
+    //   return process_wait(tid);
+    // }
   // }
   return tid;
 }
