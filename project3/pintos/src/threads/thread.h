@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "filesys/file.h"
 #include "synch.h"
+#include "lib/kernel/hash.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -114,6 +115,10 @@ struct thread
     struct list_elem child_elem;        /* Child process element. */
 
     struct file* executing_file;        /* Current executing file. */
+
+    /* Shared between thread.c and vm/page.c. */
+    /* Since virtual address space is allocated each process, hash table for managing virtual pages should be defined. */
+    struct hash vm;                     /* Hash table managing virtual address space that thread has. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

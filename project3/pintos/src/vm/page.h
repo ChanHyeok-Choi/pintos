@@ -6,7 +6,15 @@
     4. Load a related file contents into physical memory. 
     5. Map virtual page with physical frame, in that we should check read/write authorization. 
        (Because reading an information for offset is needed when allocation of physical memory.)
-       
+   
+   Hash table for managing vm_entries:
+      On process created:
+         initialize hash table
+         create vm_entries for virtual page of process
+      On process executing:
+         When page fault occurs, search vm_entry w.r.t. address where page fault occurs through hash table.
+      On process terminated:
+         Free bucket list of hash table and data structure for vm_entry.
     */
 #include "lib/stdint.h"
 #include "lib/stddef.h"
