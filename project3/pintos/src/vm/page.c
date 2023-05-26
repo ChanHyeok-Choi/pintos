@@ -21,3 +21,28 @@ static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem
     bool result = vmE1->vaddr < vmE2->vaddr;
     return result;
 }
+
+/* Insert vm_entry into hash table by using hash_insert(). If insertion is succeeded, then 
+   return ture, otherwise false. */
+bool insert_vm_entry (struct hash *vm, struct vm_entry *vmE) {
+    struct hash_elem* old = hash_insert(vm, &vmE->hash_elem);
+    bool success;
+    if (old == NULL) {
+        success = true;
+    } else {
+        success = false;
+    }
+    return success;
+}
+
+/* Remove vm_entry from hash table by using hash_delete(). */
+bool delete_vm_entry (struct hash *vm, struct vm_entry *vmE) {
+    struct hash_elem* old = hash_delete(vm, &vmE->hash_elem);
+    bool success;
+    if (old == NULL) {
+        success = false;
+    } else {
+        success = true;
+    } 
+    return success;
+}
