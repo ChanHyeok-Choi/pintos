@@ -19,6 +19,7 @@
 #include "lib/stdint.h"
 #include "lib/stddef.h"
 #include "lib/kernel/hash.h"
+#include "lib/debug.h"
 
 #define VM_ELF 0
 #define VM_FILE 1
@@ -36,5 +37,9 @@ struct vm_entry {
    size_t read_bytes;   /* Size of data that is written to virtual page. */
    size_t zero_bytes;   /* Bytes of remained page to fill with 0. */
 
-   struct hash_elem elem;/* Hash table element. */
+   struct hash_elem hash_elem;/* Hash table element. */
 };
+
+void init_hash_for_vm (struct hash *vm);
+static unsigned hash_func_for_vm (const struct hash_elem *e, void *aux UNUSED);
+static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem *h2);
