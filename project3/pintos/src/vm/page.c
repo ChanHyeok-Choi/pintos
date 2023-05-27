@@ -1,9 +1,14 @@
 #include "page.h"
 #include "lib/kernel/hash.h"
+#include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "threads/malloc.h"
+#include "threads/palloc.h"
+#include "userprog/pagedir.h"
 
 /* Initialize hash table by using hash_init(). */
 void init_hash_for_vm (struct hash *vm) {
-    hash_init(vm, &hash_func_for_vm, &less_func_for_vm, NULL);
+    hash_init(vm, hash_func_for_vm, less_func_for_vm, NULL);
 }
 
 /* After searching struct vm_entry for element by hash_entry(), return hash value
@@ -45,4 +50,31 @@ bool delete_vm_entry (struct hash *vm, struct vm_entry *vmE) {
         success = true;
     } 
     return success;
+}
+
+/* Return vm_entry w.r.t. vaddr by using hash_find(). If no exists, return NULL. */
+struct vm_entry *find_vm_entry (void *vaddr) {
+    struct vm_entry* vmE = NULL;
+    vmE->vaddr = pg_round_down(vaddr);
+    struct hash_elem* e = hash_find(&thread_current()->vm, &vmE->hash_elem);
+    if (e != NULL)
+        return hash_entry(e, struct vm_entry, hash_elem);
+    return NULL;
+}
+
+/* Remove bucket list and vm_entries of hash table by using hash_destory(). */
+void destroy_vm_entries (struct hash *vm) {
+    hash_destroy(vm, destroy_vm_func);
+}
+
+/* Performs some operation on hash element E, given auxiliary data AUX.*/
+void destroy_vm_func (struct hash_elem *e, void *aux UNUSED) {
+    struct vm_entry *vmE = hash_entry(e, struct vm_entry, hash_elem);
+    /* If vm_entry of a loaded page, free page and page mapping by palloc_free_page() and pagedir_clear_page(). */
+    if (vmE->load_flag == true) {
+        void* page = pagedir_get_page(thread_current()->pagedir, vmE->vaddr);
+        palloc_free_page(page);
+        pagedir_clear_page(thread_current()->pagedir, vmE->vaddr);
+    }
+    free(vmE);
 }

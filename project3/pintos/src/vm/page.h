@@ -46,3 +46,8 @@ static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem
 
 bool insert_vm_entry (struct hash *vm, struct vm_entry *vmE);
 bool delete_vm_entry (struct hash *vm, struct vm_entry *vmE);
+
+struct vm_entry *find_vm_entry (void *vaddr);
+
+void destroy_vm_entries (struct hash *vm);
+void destroy_vm_func (struct hash_elem *e, void *aux UNUSED);
