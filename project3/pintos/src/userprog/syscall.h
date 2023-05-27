@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "vm/page.h"
 
 struct lock filesys_lock;
 

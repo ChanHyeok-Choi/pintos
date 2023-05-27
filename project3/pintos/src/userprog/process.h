@@ -3,9 +3,11 @@
 
 #include "threads/thread.h"
 #include "filesys/file.h"
+#include "vm/page.h"
 
+bool handle_page_fault (struct vm_entry *vmE);
 /* Separate necessary functions doing task w.r.t. file_descriptor. */
-int add_file_descriptor(struct file* f);
+int add_file_descriptor(struct file *f);
 struct file* get_file_descriptor(int fd);
 void close_file_descriptor(int fd);
 tid_t process_execute (const char *file_name);

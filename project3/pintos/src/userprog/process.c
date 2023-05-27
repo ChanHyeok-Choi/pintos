@@ -19,10 +19,54 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
-#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static bool install_page (void *upage, void *kpage, bool writable);
+
+/* Implement handling function for page fault. */
+bool handle_page_fault (struct vm_entry *vmE) {
+  /* When page fault occurs, allocate physical memory. 
+      Success:
+        Check type of vm_entry.
+          VM_ELF:
+            Load data from file to memory.
+            Setup the page table.
+            Success
+          Otherwise:
+            Fail
+      Fail:
+        Fail */
+  /* If vmE is already loaded, fail. */
+  if (vmE->load_flag) {
+    return false;
+  }
+  void *new_page = palloc_get_page(PAL_USER);
+  if (new_page == NULL) {
+    return false;
+  }
+  switch (vmE->type) {
+    case VM_ELF:
+      if (!load_disk_page(new_page, vmE)) {
+        palloc_free_page(new_page);
+        return false;
+      }
+      break;
+    case VM_FILE:
+      break;
+    case VM_SWAP:
+      break;
+    default:
+      palloc_free_page(new_page);
+      return false;
+  }
+  if (!install_page(vmE->vaddr, new_page, vmE->writable_flag)) {
+    palloc_free_page(new_page);
+    return false;
+  }
+  vmE->load_flag = true;
+  return true;
+}
 
 /* Separate creating file_descriptor function from syscall.c. */
 int add_file_descriptor(struct file* f) {

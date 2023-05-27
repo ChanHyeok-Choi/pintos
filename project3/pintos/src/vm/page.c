@@ -1,10 +1,13 @@
 #include "page.h"
+#include "lib/string.h"
+#include "lib/stdbool.h"
 #include "lib/kernel/hash.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "userprog/pagedir.h"
+#include "filesys/file.h"
 
 static unsigned hash_func_for_vm (const struct hash_elem *e, void *aux UNUSED);
 static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem *h2);
@@ -80,4 +83,17 @@ void destroy_vm_func (struct hash_elem *e, void *aux UNUSED) {
         pagedir_clear_page(thread_current()->pagedir, vmE->vaddr);
     }
     free(vmE);
+}
+
+/* Load from page of disk to physical memory*/
+bool load_disk_page(void* kaddr, struct vm_entry *vmE) {
+    /* Read file, then if success, return true.
+       read vm_entry file to physical memory. 
+       If fail to write all of 4KB, fill the rest with 0. */
+    off_t disk_file = file_read_at(vmE->file, kaddr, vmE->read_bytes, vmE->offset);
+    if ((int) vmE->read_bytes == disk_file) {
+        memset(kaddr + vmE->read_bytes, 0, vmE->zero_bytes);
+        return true;
+    }
+    return false;
 }

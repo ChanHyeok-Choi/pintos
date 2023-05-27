@@ -1,3 +1,5 @@
+#ifndef VM_PAGE_H
+#define VM_PAGE_H
 /* We need virtual memory entry to reference page table. 
    Example:
     1. Suppose that we access virtual address of 0x0804bec0 w.r.t. 0x0804b000 (0x is page directory index, 0804b is virtual page number index, and ec0 is offset).
@@ -16,10 +18,12 @@
       On process terminated:
          Free bucket list of hash table and data structure for vm_entry.
     */
+
 #include "lib/stdint.h"
 #include "lib/stddef.h"
 #include "lib/kernel/hash.h"
 #include "lib/debug.h"
+#include "lib/stdbool.h"
 
 #define VM_ELF 0
 #define VM_FILE 1
@@ -49,3 +53,7 @@ struct vm_entry *find_vm_entry (void *vaddr);
 
 void destroy_vm_entries (struct hash *vm);
 void destroy_vm_func (struct hash_elem *e, void *aux UNUSED);
+
+bool load_disk_page(void* kaddr, struct vm_entry *vmE);
+
+#endif

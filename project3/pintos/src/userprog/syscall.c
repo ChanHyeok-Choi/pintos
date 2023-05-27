@@ -11,7 +11,6 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
-#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 

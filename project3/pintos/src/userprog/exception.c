@@ -5,6 +5,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "userprog/syscall.h"
+#include "threads/vaddr.h"
+#include "userprog/process.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -127,6 +129,8 @@ page_fault (struct intr_frame *f)
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
+  struct vm_entry *vmE; /* Virtual memory entry. */
+  bool load_check = false;
 
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
@@ -149,16 +153,48 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  exit(-1);
+//   exit(-1);
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
-  kill (f);
+//   printf ("Page fault at %p: %s error %s page in %s context.\n",
+//           fault_addr,
+//           not_present ? "not present" : "rights violation",
+//           write ? "writing" : "reading",
+//           user ? "user" : "kernel");
+//   kill (f);
+   /* Handle page fault. 
+      if address is valid on page fault()?
+         Yes:
+            Search vm_entry
+            Allocate page
+            Load data from file to memory
+            Setup page table
+            Success
+         No:
+            Fail */
+   /* Not a case accessing read-only page. */
+   if (!not_present) {
+      exit(-1);
+   }
+   /* Search vm_entry of page fault address by using check_user_space(). */
+   vmE = check_user_space(fault_addr, f->esp);
+   if (vmE != NULL) {
+      load_check = handle_page_fault(vmE);
+      /* Inspect wehther loading file to phsyical memory and mapping are successful or not. */
+      if (vmE->load_flag) {
+         load_check = true;
+      }
+   }
+
+   if (!load_check) {
+      printf ("Page fault at %p: %s error %s page in %s context.\n",
+               fault_addr,
+               not_present ? "not present" : "rights violation",
+               write ? "writing" : "reading",
+               user ? "user" : "kernel");
+      kill (f);
+   }
 }
 
