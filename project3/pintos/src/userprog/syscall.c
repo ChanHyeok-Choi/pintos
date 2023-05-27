@@ -11,6 +11,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -85,8 +86,6 @@ void close (int fd) {
 int read (int fd, void *buffer, unsigned size) {
   struct file *f;
   int file_size;
-
-  check_user_space(buffer);
   
   if (fd == 0) {
     /* Read input from keyboard. */
@@ -117,8 +116,6 @@ int write (int fd, const void *buffer, unsigned size) {
   /* We should implenment only the following: 
      If fd == 1, writes to console: call putbuf(buffer, size) and return size. */
   struct file *f;
-
-  // check_user_space(buffer);
   
   if (fd == 1) {
     putbuf(buffer, size);
@@ -206,7 +203,22 @@ unsigned tell (int fd) {
 
 /* Check if a stack pointer(or address) is in user space(or address): 0x8048000 ~ 0xc0000000. 
    If it is out of the space, then exit process.*/
-void check_user_space(void *stack_ptr) {
+// void check_user_space(void *stack_ptr) {
+//   // ASSERT(is_user_vaddr(stack_ptr));
+//   // if ((int)stack_ptr >= 0x8048000 || (unsigned int)stack_ptr <= 0xc0000000) {
+//   if(is_user_vaddr(stack_ptr)) {
+//     // pass
+//   } else {
+//     exit(-1);
+//   }
+//   if (pagedir_get_page(thread_current()->pagedir, stack_ptr) != NULL) {
+//     // pass
+//   } else {
+//     exit(-1);
+//   }
+// }
+
+struct vm_entry* check_user_space (void *addr, void *stack_ptr UNUSED) {
   // ASSERT(is_user_vaddr(stack_ptr));
   // if ((int)stack_ptr >= 0x8048000 || (unsigned int)stack_ptr <= 0xc0000000) {
   if(is_user_vaddr(stack_ptr)) {
@@ -218,6 +230,35 @@ void check_user_space(void *stack_ptr) {
     // pass
   } else {
     exit(-1);
+  }
+  /* If addr exists in vm_entry, return vm_entry by using find_vm_entry(). */
+  return find_vm_entry(addr);
+}
+
+/* Check whether buffer address is valid virtual address or not. It is applied to read() & write() system call. */
+void check_valid_buffer (void *buffer, unsigned size, void *stack_ptr, bool writable) {
+  struct vm_entry *vmE;
+  char *buffer_i = (char *) buffer;
+  unsigned i;
+  for (i = 0; i < size; i++) {
+    vmE = check_user_space((void *) buffer_i, stack_ptr);
+    if (vmE != NULL) {
+      if (writable) {
+        if (!vmE->writable_flag) {
+          exit(-1);
+        }
+      }
+    }
+    buffer_i++;
+  }
+}
+
+/* Check whether string address in system call is valid or not. This is applied to open() system call. */
+void check_valid_string (const void* str, void* stack_ptr) {
+  char *str_i = (char *) str;
+  while (*str_i != 0) {
+    check_user_space((void *) str_i, stack_ptr);
+    str_i++;
   }
 }
 
@@ -231,16 +272,16 @@ void copy_arguments(void *esp, int *arg, int arg_cnt) {
 
   switch (arg_cnt) {
     case 1:
-      check_user_space(esp+4);
+      check_user_space(esp+4, esp+4);
       arg[0] = *(int *)(esp+4);
       break;
     case 2:
-      check_user_space(esp+16);
+      check_user_space(esp+16, esp+16);
       arg[0] = *(int *)(esp+16);
       arg[1] = *(int *)(esp+20);
       break;
     case 3:
-      check_user_space(esp+20);
+      check_user_space(esp+20, esp+20);
       arg[0] = *(int *)(esp+20);
       arg[1] = *(int *)(esp+24);
       arg[2] = *(int *)(esp+28);
@@ -255,7 +296,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   int syscall_number = *(int *)f->esp;
   /* Check whether or not user space. */
-  check_user_space(f->esp);
+  check_user_space(f->esp, f->esp);
 
   /* Copy arguments from user stack. */
   int args[3];
@@ -274,6 +315,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_OPEN:
       copy_arguments(f->esp, args, 1);
+      check_valid_string((const char *) args[0], f->esp);
       f->eax = open((const char *) args[0]);
       break;
     case SYS_CLOSE:
@@ -282,10 +324,12 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_READ:
       copy_arguments(f->esp, args, 3);
+      check_valid_buffer((void *) args[1], (unsigned) args[2], f->esp, true);
       f->eax = read(args[0], (void *) args[1], (unsigned) args[2]);
       break;
     case SYS_WRITE:
       copy_arguments(f->esp, args, 3);
+      check_valid_buffer((void *) args[1], (unsigned) args[2], f->esp, true);
       f->eax = write(args[0], (const void *) args[1], (unsigned) args[2]);
       break;
     case SYS_WAIT:

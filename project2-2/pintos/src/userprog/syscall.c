@@ -150,18 +150,21 @@ int wait (tid_t tid) {
    The new process is loaded and scheduled to run.
    Returns the process ID (tid) of the new process, or -1 if the execution fails. */
 tid_t exec(const char *cmd_line) {
-  tid_t tid = process_execute(cmd_line);
   /* If the child process was created successfully, wait for the child process to be loaded into memory */
-  // if (tid == -1) {
-    // struct thread *child = get_child_thread_by_tid(tid);
-    // struct thread *parent = thread_current();
-    // sema_down(&parent->load_sema);
-    
-    // if (!parent->load_status) {
-    //   return process_wait(tid);
-    // }
-  // }
-  return tid;
+  // struct thread *child_process;
+	tid_t child_tid;
+	
+	child_tid = process_execute(cmd_line);
+	// child_process = get_child_thread_by_tid(child_tid);
+  // /* wait child process */	
+	// sema_down(&(child_process->load_sema));      
+	// if(child_process->load_status==true)
+	// 	return child_tid;
+	// else
+	// {
+	// 	return -1;
+	// }
+  return child_tid;
 }
 
 /* Deletes the file called file. Returns true if successful, false otherwise.

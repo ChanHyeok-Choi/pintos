@@ -41,8 +41,6 @@ struct vm_entry {
 };
 
 void init_hash_for_vm (struct hash *vm);
-static unsigned hash_func_for_vm (const struct hash_elem *e, void *aux UNUSED);
-static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem *h2);
 
 bool insert_vm_entry (struct hash *vm, struct vm_entry *vmE);
 bool delete_vm_entry (struct hash *vm, struct vm_entry *vmE);

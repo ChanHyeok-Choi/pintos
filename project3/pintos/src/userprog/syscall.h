@@ -21,7 +21,10 @@ bool remove (const char *file);
 int filesize (int fd);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
-void check_user_space(void *stack_ptr);
+// void check_user_space(void *stack_ptr);
+struct vm_entry *check_user_space (void *addr, void *stack_ptr UNUSED);
+void check_valid_buffer (void *buffer, unsigned size, void *stack_ptr, bool writable);
+void check_valid_string (const void* str, void* stack_ptr);
 void copy_arguments(void *esp, int *arg, int arg_cnt);
 
 #endif /* userprog/syscall.h */

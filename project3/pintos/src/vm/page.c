@@ -6,6 +6,9 @@
 #include "threads/palloc.h"
 #include "userprog/pagedir.h"
 
+static unsigned hash_func_for_vm (const struct hash_elem *e, void *aux UNUSED);
+static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem *h2);
+
 /* Initialize hash table by using hash_init(). */
 void init_hash_for_vm (struct hash *vm) {
     hash_init(vm, hash_func_for_vm, less_func_for_vm, NULL);
