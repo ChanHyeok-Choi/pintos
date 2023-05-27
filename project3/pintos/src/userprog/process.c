@@ -271,6 +271,9 @@ process_exit (void)
     close_file_descriptor(i);
   }
 
+  palloc_free_page(cur->file_descriptor_table);
+  /* Desotry vm_entries. */
+  destroy_vm_entries(&cur->vm);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -563,6 +566,8 @@ static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
               uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
 {
+  struct vm_entry *vmE;
+  struct file *re_file = file_reopen(file);
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
@@ -576,27 +581,47 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
+      // /* Get a page of memory. */
+      // uint8_t *kpage = palloc_get_page (PAL_USER);
+      // if (kpage == NULL)
+      //   return false;
+
+      // /* Load this page. */
+      // if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+      //   {
+      //     palloc_free_page (kpage);
+      //     return false; 
+      //   }
+      // memset (kpage + page_read_bytes, 0, page_zero_bytes);
+
+      // /* Add the page to the process's address space. */
+      // if (!install_page (upage, kpage, writable)) 
+      //   {
+      //     palloc_free_page (kpage);
+      //     return false; 
+      //   }
+
+      /* Add functionality to initialize vm. */
+      /* Create vm_entry. */
+      vmE = malloc(sizeof(struct vm_entry));
+      if (vmE == NULL)
         return false;
+      /* Set members of vm_entry. */
+      vmE->file = re_file;
+      vmE->load_flag = false;
+      vmE->offset = ofs;
+      vmE->read_bytes = page_read_bytes;
+      vmE->type = VM_ELF;
+      vmE->vaddr = upage;
+      vmE->writable_flag = writable;
+      vmE->zero_bytes = page_zero_bytes;
 
-      /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
-      /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+      /* Add vm_entry into hash table. */
+      if(!insert_vm_entry(&thread_current()->vm, vmE))
+        printf("Insert vm_entry invoke error!\n");
 
       /* Advance. */
+      ofs += page_read_bytes;
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
@@ -611,6 +636,7 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
+  struct vm_entry *vmE;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
@@ -621,6 +647,23 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+
+  /* Create vm_entry of 4KB stack. */
+  vmE = malloc(sizeof(struct vm_entry));
+  if (vmE == NULL) {
+    palloc_free_page (kpage);
+    return false;
+  }
+
+  /* Initialize members of vm_entry. */
+  vmE->load_flag = true;
+  vmE->writable_flag = true;
+  vmE->type = VM_SWAP;
+  vmE->vaddr = pg_round_down(((uint8_t *) PHYS_BASE) - PGSIZE);
+
+  /* Insert it into vm hash table by using insert_vm_entry(). */
+  success = insert_vm_entry(&thread_current()->vm, vmE);
+  
   return success;
 }
 
