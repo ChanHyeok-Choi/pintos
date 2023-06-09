@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -11,6 +12,9 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#include "threads/malloc.h"
+#include "threads/palloc.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -360,4 +364,99 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   // printf ("system call!\n");
   // thread_exit ();
+}
+
+/* Once succeeded, return mapping id, otherwise, return -1. 
+   Load file data into memory by demanding paging.
+   fd: mapping file to virtual space of process.
+   addr: starting mapping address. */
+int mmap (int fd, void *addr) {
+  /* Check arguments:
+        Error: return error
+        Valid: file_reopen()
+               allocate mmId
+               create mm_file & initialize it
+               create vm_entry & initialize it
+               return mmId */
+  if (pg_ofs(addr) != 0 || !addr)
+    return -1;
+  if (is_user_vaddr(addr) == false)
+    return -1;
+
+  struct thread *cur = thread_current();
+  struct file *file = file_reopen(get_file_descriptor(fd));
+  struct mm_file *mm_file;
+  size_t ofs = 0;
+  int length;
+
+  mm_file = (struct mm_file *) malloc(sizeof(struct mm_file));
+  memset(mm_file, 0, sizeof(struct mm_file));
+  mm_file->file = file;
+  mm_file->mmId = cur->next_mmId++;
+  list_init (&mm_file->vmE_list);
+  list_push_back (&cur->mm_list, &mm_file->elem);
+
+  length = file_length(mm_file->file);
+  while (length > 0) {
+    if (find_vm_entry(addr))
+      return -1;
+    
+    struct vm_entry *vmE = (struct vm_entry *) malloc(sizeof(struct vm_entry));
+    memset(vmE, 0, sizeof(struct vm_entry));
+    vmE->type = VM_FILE;
+    vmE->writable_flag = true;
+    vmE->vaddr = addr;
+    vmE->offset = ofs;
+    vmE->zero_bytes = 0;
+    vmE->file = mm_file->file;
+    if (length < PGSIZE)
+      vmE->read_bytes = length;
+    else
+      vmE->read_bytes = PGSIZE;
+
+    list_push_back (&mm_file->vmE_list, &vmE->mm_elem);
+    insert_vm_entry (&cur->vm, vmE);
+
+    addr += PGSIZE;
+    ofs += PGSIZE;
+    length -= PGSIZE;
+  }
+  return mm_file->mmId;
+}
+
+/* Clear all of vm_entry w.r.t mmId in mm_list. When removing mapping, call do_munmap(). */
+void munmap (int _mmId) {
+  /* Iterate mm_list:
+        mmId dismatch: iterate
+        mmId match: remove vm_entry
+                    remove mm_file
+                    file_close. */
+  struct list_elem *e;
+  for (e = list_begin (&thread_current ()->mm_list); e != list_end (&thread_current ()->mm_list); e = list_next (e)) {
+      struct mm_file *_mm_file = list_entry (e, struct mm_file, elem);
+      if (_mm_file->mmId == _mmId) {
+        do_munmap(_mm_file);
+      }
+  }
+}
+
+/* Remove all of vm_entry connected with vmE_list of mm_file. If physical page w.r.t. virtual address to vm_entry
+   exists and dirty, record memory contents on disk. */
+void do_munmap (struct mm_file* _mm_file) {
+  ASSERT (_mm_file != NULL);
+
+  struct list_elem *e;
+  for (e = list_begin (&_mm_file->vmE_list); e != list_end (&_mm_file->vmE_list); ) {
+      struct vm_entry *vmE = list_entry (e, struct vm_entry, mm_elem);
+      if (vmE->load_flag && pagedir_is_dirty(thread_current()->pagedir, vmE->vaddr)) {
+          if (file_write_at (vmE->file, vmE->vaddr, vmE->read_bytes, vmE->offset) != (int) vmE->read_bytes)
+              NOT_REACHED ();
+          // free_page (pagedir_get_page (thread_current()->pagedir, vmE->vaddr));
+      }
+      vmE->load_flag = false;
+      e = list_remove (e);
+      delete_vm_entry (&thread_current()->vm, vmE);
+  }
+  list_remove (&_mm_file->elem);
+  free (_mm_file);
 }

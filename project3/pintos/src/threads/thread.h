@@ -120,6 +120,9 @@ struct thread
     /* Since virtual address space is allocated each process, hash table for managing virtual pages should be defined. */
     struct hash vm;                     /* Hash table managing virtual address space that thread has. */
 
+    struct list mm_list;                /* List for files mapping memory. */
+    int next_mmId;                        /* Pointer to next mm. */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */

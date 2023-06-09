@@ -53,6 +53,10 @@ bool handle_page_fault (struct vm_entry *vmE) {
       }
       break;
     case VM_FILE:
+      if (!load_disk_page(new_page, vmE)) {
+        palloc_free_page(new_page);
+        return false;
+      }
       break;
     case VM_SWAP:
       break;
@@ -313,6 +317,18 @@ process_exit (void)
   int i;
   for (i=3; i<FDT_MAX_SIZE; i++) {
     close_file_descriptor(i);
+  }
+
+  /* Remove all of vm_entry w.r.t. mmId to mapping in mm_list. */
+  int mmId;
+  for (mmId = 1; mmId < cur->next_mmId; mmId++) {
+      struct list_elem *e;
+      for (e = list_begin (&thread_current ()->mm_list); e != list_end (&thread_current ()->mm_list); e = list_next (e)) {
+          struct mm_file *_mm_file = list_entry (e, struct mm_file, elem);
+          if (_mm_file->mmId == mmId) {
+            do_munmap(_mm_file);
+          }
+      }
   }
 
   palloc_free_page(cur->file_descriptor_table);

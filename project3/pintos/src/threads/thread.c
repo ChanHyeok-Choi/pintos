@@ -218,6 +218,9 @@ thread_create (const char *name, int priority,
   sema_init(&t->load_sema, 0);
   list_push_back(&running_thread()->child_list, &t->child_elem);
 
+  list_init(&t->mm_list);
+  t->next_mmId = 1;
+
   /* Allocate file desciptor table, then initiate it. */
   t->file_descriptor_table = palloc_get_page(PAL_ZERO);
   if (t->file_descriptor_table == NULL) {

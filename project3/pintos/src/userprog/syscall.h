@@ -28,4 +28,8 @@ void check_valid_buffer (void *buffer, unsigned size, void *stack_ptr, bool writ
 void check_valid_string (const void* str, void* stack_ptr);
 void copy_arguments(void *esp, int *arg, int arg_cnt);
 
+int mmap (int fd, void *addr);
+void munmap (int mmId);
+void do_munmap (struct mm_file* _mm_file);
+
 #endif /* userprog/syscall.h */

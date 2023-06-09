@@ -29,20 +29,30 @@
 #define VM_FILE 1
 #define VM_SWAP 2
 
+struct mm_file {
+   int mmId;               /* Once succeeded, returned mapping id. */
+   struct file* file;      /* File object of mapping file. */
+   struct list_elem elem;  /* Struct for connecting list of mm_files. */
+   struct list vmE_list;   /* List of all of vm_entry w.r.t. mm_file. */
+};
+
 /* Data structure that loads necessary pages by separating logical and physical addresses. */
 struct vm_entry {
-   uint8_t type;        /* Type of VM_ELF, VM_FILE, and VM_SWAP. */
-   void *vaddr;         /* Virtual page number of vm_entry. */
-   bool writable_flag;  /* Flag that determines whether write is possible or not. Ture: writable, False: impossbile. */
+   uint8_t type;              /* Type of VM_ELF, VM_FILE, and VM_SWAP. */
+   void *vaddr;               /* Virtual page number of vm_entry. */
+   bool writable_flag;        /* Flag that determines whether write is possible or not. Ture: writable, False: impossbile. */
    
-   bool load_flag;      /* Flag that informs whether load on physical memory is done or not. */
-   struct file* file;   /* File mapped to virtual address. */
+   bool load_flag;            /* Flag that informs whether load on physical memory is done or not. */
+   struct file* file;         /* File mapped to virtual address. */
 
-   size_t offset;       /* Offset of file to read. */
-   size_t read_bytes;   /* Size of data that is written to virtual page. */
-   size_t zero_bytes;   /* Bytes of remained page to fill with 0. */
+   size_t offset;             /* Offset of file to read. */
+   size_t read_bytes;         /* Size of data that is written to virtual page. */
+   size_t zero_bytes;         /* Bytes of remained page to fill with 0. */
 
    struct hash_elem hash_elem;/* Hash table element. */
+
+   struct list_elem mm_elem;  /* mm list element. */
+   size_t swap_slot;          /* Swap slot. */
 };
 
 void init_hash_for_vm (struct hash *vm);
