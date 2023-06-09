@@ -57,7 +57,6 @@ bool handle_page_fault (struct vm_entry *vmE) {
     case VM_SWAP:
       break;
     default:
-      palloc_free_page(new_page);
       return false;
   }
   if (!install_page(vmE->vaddr, new_page, vmE->writable_flag)) {
@@ -612,7 +611,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
               uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
 {
   struct vm_entry *vmE;
-  struct file *re_file = file_reopen(file);
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
@@ -648,22 +646,22 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Add functionality to initialize vm. */
       /* Create vm_entry. */
-      vmE = malloc(sizeof(struct vm_entry));
+      vmE = (struct vm_entry *) malloc(sizeof(struct vm_entry));
       if (vmE == NULL)
         return false;
       /* Set members of vm_entry. */
-      vmE->file = re_file;
+      vmE->file = file;
       vmE->load_flag = false;
       vmE->offset = ofs;
       vmE->read_bytes = page_read_bytes;
+      vmE->zero_bytes = page_zero_bytes;
       vmE->type = VM_ELF;
       vmE->vaddr = upage;
       vmE->writable_flag = writable;
-      vmE->zero_bytes = page_zero_bytes;
 
       /* Add vm_entry into hash table. */
       if(!insert_vm_entry(&thread_current()->vm, vmE))
-        printf("Insert vm_entry invoke error!\n");
+        printf("Insert_vm_entry invoke error!\n");
 
       /* Advance. */
       ofs += page_read_bytes;
@@ -694,9 +692,8 @@ setup_stack (void **esp)
     }
 
   /* Create vm_entry of 4KB stack. */
-  vmE = malloc(sizeof(struct vm_entry));
+  vmE = (struct vm_entry *) malloc(sizeof(struct vm_entry));
   if (vmE == NULL) {
-    palloc_free_page (kpage);
     return false;
   }
 

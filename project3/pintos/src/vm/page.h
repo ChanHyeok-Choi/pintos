@@ -29,6 +29,7 @@
 #define VM_FILE 1
 #define VM_SWAP 2
 
+/* Data structure that loads necessary pages by separating logical and physical addresses. */
 struct vm_entry {
    uint8_t type;        /* Type of VM_ELF, VM_FILE, and VM_SWAP. */
    void *vaddr;         /* Virtual page number of vm_entry. */

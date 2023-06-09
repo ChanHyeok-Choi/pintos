@@ -14,12 +14,14 @@ static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem
 
 /* Initialize hash table by using hash_init(). */
 void init_hash_for_vm (struct hash *vm) {
+    ASSERT(vm != NULL);
     hash_init(vm, hash_func_for_vm, less_func_for_vm, NULL);
 }
 
 /* After searching struct vm_entry for element by hash_entry(), return hash value
    for vaddr of vm_entry by using hash_int(). */
 static unsigned hash_func_for_vm (const struct hash_elem *e, void *aux UNUSED) {
+    ASSERT(e != NULL);
     struct vm_entry* vmE = hash_entry(e, struct vm_entry, hash_elem);
     unsigned hash_value = hash_int((int) vmE->vaddr);
     return hash_value;
@@ -27,6 +29,8 @@ static unsigned hash_func_for_vm (const struct hash_elem *e, void *aux UNUSED) {
 
 /* Compare each vaddr after getting struct vm_entry for each element by hash_entry(). */
 static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem *h2) {
+    ASSERT(h1 != NULL);
+    ASSERT(h2 != NULL);
     struct vm_entry* vmE1 = hash_entry(h1, struct vm_entry, hash_elem);
     struct vm_entry* vmE2 = hash_entry(h2, struct vm_entry, hash_elem);
     bool result = vmE1->vaddr < vmE2->vaddr;
@@ -36,6 +40,8 @@ static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem
 /* Insert vm_entry into hash table by using hash_insert(). If insertion is succeeded, then 
    return ture, otherwise false. */
 bool insert_vm_entry (struct hash *vm, struct vm_entry *vmE) {
+    ASSERT(vm != NULL);
+    ASSERT(vmE != NULL);
     struct hash_elem* old = hash_insert(vm, &vmE->hash_elem);
     bool success;
     if (old == NULL) {
@@ -48,14 +54,14 @@ bool insert_vm_entry (struct hash *vm, struct vm_entry *vmE) {
 
 /* Remove vm_entry from hash table by using hash_delete(). */
 bool delete_vm_entry (struct hash *vm, struct vm_entry *vmE) {
+    ASSERT(vm != NULL);
+    ASSERT(vmE != NULL);
     struct hash_elem* old = hash_delete(vm, &vmE->hash_elem);
-    bool success;
     if (old == NULL) {
-        success = false;
-    } else {
-        success = true;
-    } 
-    return success;
+        return false;
+    }
+    free(vmE);
+    return true;
 }
 
 /* Return vm_entry w.r.t. vaddr by using hash_find(). If no exists, return NULL. */
@@ -70,14 +76,16 @@ struct vm_entry *find_vm_entry (void *vaddr) {
 
 /* Remove bucket list and vm_entries of hash table by using hash_destory(). */
 void destroy_vm_entries (struct hash *vm) {
+    ASSERT(vm != NULL);
     hash_destroy(vm, destroy_vm_func);
 }
 
 /* Performs some operation on hash element E, given auxiliary data AUX.*/
 void destroy_vm_func (struct hash_elem *e, void *aux UNUSED) {
+    ASSERT(e != NULL);
     struct vm_entry *vmE = hash_entry(e, struct vm_entry, hash_elem);
     /* If vm_entry of a loaded page, free page and page mapping by palloc_free_page() and pagedir_clear_page(). */
-    if (vmE->load_flag == true) {
+    if (vmE->load_flag) {
         void* page = pagedir_get_page(thread_current()->pagedir, vmE->vaddr);
         palloc_free_page(page);
         pagedir_clear_page(thread_current()->pagedir, vmE->vaddr);
@@ -87,6 +95,8 @@ void destroy_vm_func (struct hash_elem *e, void *aux UNUSED) {
 
 /* Load from page of disk to physical memory*/
 bool load_disk_page(void* kaddr, struct vm_entry *vmE) {
+    ASSERT(kaddr != NULL);
+    ASSERT(vmE != NULL);
     /* Read file, then if success, return true.
        read vm_entry file to physical memory. 
        If fail to write all of 4KB, fill the rest with 0. */

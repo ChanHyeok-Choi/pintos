@@ -252,7 +252,7 @@ void check_valid_buffer (void *buffer, unsigned size, void *stack_ptr, bool writ
   }
 }
 
-/* Check whether string address in system call is valid or not. This is applied to open() system call. */
+/* Check whether string address in system call is valid or not. This is applied to exec() & open() system call. */
 void check_valid_string (const void* str, void* stack_ptr) {
   char *str_i = (char *) str;
   while (*str_i != 0) {
@@ -337,6 +337,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_EXEC:
       copy_arguments(f->esp, args, 1);
+      check_valid_string((const char *) args[0], f->esp);
       f->eax = exec((const char *) args[0]);
       break;
     case SYS_REMOVE:
