@@ -51,7 +51,9 @@ struct vm_entry {
 
    struct hash_elem hash_elem;/* Hash table element. */
 
+   /* Memory Mapped File. */
    struct list_elem mm_elem;  /* mm list element. */
+   /* Swapping. */
    size_t swap_slot;          /* Swap slot. */
 };
 

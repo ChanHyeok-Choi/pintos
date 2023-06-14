@@ -61,8 +61,10 @@ bool handle_page_fault (struct vm_entry *vmE) {
     case VM_SWAP:
       break;
     default:
+      palloc_free_page(new_page);
       return false;
   }
+  /* Mapping virtual address with physical address. */
   if (!install_page(vmE->vaddr, new_page, vmE->writable_flag)) {
     palloc_free_page(new_page);
     return false;
@@ -630,6 +632,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
+  
+  // printf("load start~~\n");
+  // printf("%p \n", upage);
 
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
@@ -663,9 +668,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Add functionality to initialize vm. */
       /* Create vm_entry. */
       vmE = (struct vm_entry *) malloc(sizeof(struct vm_entry));
-      if (vmE == NULL)
-        return false;
-      /* Set members of vm_entry. */
+
+      /* Initialize members of vm_entry. */
       vmE->file = file;
       vmE->load_flag = false;
       vmE->offset = ofs;
@@ -680,11 +684,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         printf("Insert_vm_entry invoke error!\n");
 
       /* Advance. */
-      ofs += page_read_bytes;
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      ofs += page_read_bytes;
       upage += PGSIZE;
     }
+  // printf("load end~~\n");
   return true;
 }
 
@@ -696,7 +701,7 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
   struct vm_entry *vmE;
-
+  // printf("aaaaaaaaabbbbbbbbbb \n");
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
@@ -709,11 +714,8 @@ setup_stack (void **esp)
 
   /* Create vm_entry of 4KB stack. */
   vmE = (struct vm_entry *) malloc(sizeof(struct vm_entry));
-  if (vmE == NULL) {
-    return false;
-  }
 
-  /* Initialize members of vm_entry. */
+  /* Set members of vm_entry. */
   vmE->load_flag = true;
   vmE->writable_flag = true;
   vmE->type = VM_SWAP;
@@ -721,6 +723,7 @@ setup_stack (void **esp)
 
   /* Insert it into vm hash table by using insert_vm_entry(). */
   success = insert_vm_entry(&thread_current()->vm, vmE);
+  // printf("cccccccccccdddddddddddd \n");
   
   return success;
 }

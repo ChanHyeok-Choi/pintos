@@ -164,6 +164,7 @@ page_fault (struct intr_frame *f)
 //           write ? "writing" : "reading",
 //           user ? "user" : "kernel");
 //   kill (f);
+
    /* Handle page fault. 
       if address is valid on page fault()?
          Yes:
@@ -179,7 +180,8 @@ page_fault (struct intr_frame *f)
       exit(-1);
    }
    /* Search vm_entry of page fault address by using check_user_space(). */
-   vmE = check_user_space(fault_addr, f->esp);
+   vmE = check_user_space(fault_addr, f->esp); // fault_addr = 0xd?
+
    if (vmE != NULL) {
       load_check = handle_page_fault(vmE);
       /* Inspect wehther loading file to phsyical memory and mapping are successful or not. */
@@ -187,6 +189,8 @@ page_fault (struct intr_frame *f)
          load_check = true;
       }
    }
+
+   // printf("aaaaaaaaaaaaaaaaa0 %p \n", fault_addr);
 
    if (!load_check) {
       printf ("Page fault at %p: %s error %s page in %s context.\n",

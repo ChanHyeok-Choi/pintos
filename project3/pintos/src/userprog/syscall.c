@@ -259,9 +259,12 @@ void check_valid_buffer (void *buffer, unsigned size, void *stack_ptr, bool writ
 /* Check whether string address in system call is valid or not. This is applied to exec() & open() system call. */
 void check_valid_string (const void* str, void* stack_ptr) {
   char *str_i = (char *) str;
+  struct vm_entry *vmE;
   while (*str_i != 0) {
-    check_user_space((void *) str_i, stack_ptr);
     str_i++;
+    vmE = check_user_space((void *) str_i, stack_ptr);
+    if (vmE == NULL)
+      exit(-1);
   }
 }
 
@@ -332,7 +335,8 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_WRITE:
       copy_arguments(f->esp, args, 3);
-      check_valid_buffer((void *) args[1], (unsigned) args[2], f->esp, true);
+      // check_valid_buffer((void *) args[1], (unsigned) args[2], f->esp, true);
+      check_valid_string((const void*) args[1], f->esp);
       f->eax = write(args[0], (const void *) args[1], (unsigned) args[2]);
       break;
     case SYS_WAIT:
