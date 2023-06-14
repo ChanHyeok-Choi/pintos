@@ -181,6 +181,7 @@ page_fault (struct intr_frame *f)
    }
    /* Search vm_entry of page fault address by using check_user_space(). */
    vmE = check_user_space(fault_addr, f->esp); // fault_addr = 0xd?
+   // printf("%p \n", vmE);
 
    if (vmE != NULL) {
       load_check = handle_page_fault(vmE);
@@ -189,16 +190,10 @@ page_fault (struct intr_frame *f)
          load_check = true;
       }
    }
-
    // printf("aaaaaaaaaaaaaaaaa0 %p \n", fault_addr);
 
    if (!load_check) {
-      printf ("Page fault at %p: %s error %s page in %s context.\n",
-               fault_addr,
-               not_present ? "not present" : "rights violation",
-               write ? "writing" : "reading",
-               user ? "user" : "kernel");
-      kill (f);
+      exit(-1);
    }
 }
 

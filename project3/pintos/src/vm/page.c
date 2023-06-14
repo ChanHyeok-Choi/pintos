@@ -1,4 +1,5 @@
 #include "page.h"
+#include <stdio.h>
 #include "lib/string.h"
 #include "lib/stdbool.h"
 #include "lib/kernel/hash.h"

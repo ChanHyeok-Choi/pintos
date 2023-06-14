@@ -364,16 +364,27 @@ syscall_handler (struct intr_frame *f UNUSED)
       copy_arguments(f->esp, args, 1);
       f->eax = tell(args[0]);
       break;
+    case SYS_MMAP:
+      copy_arguments(f->esp, args, 2);
+      f->eax = mmap(args[0], (void *) args[1]);
+      break;
+    case SYS_MUNMAP:
+      copy_arguments(f->esp, args, 1);
+      munmap(args[0]);
+      break;      
   }
 
   // printf ("system call!\n");
   // thread_exit ();
 }
 
+/* Mapping file to process address space. 
+   Access file by load/store instead of read()/write() system call. */
+
 /* Once succeeded, return mapping id, otherwise, return -1. 
    Load file data into memory by demanding paging.
    fd: mapping file to virtual space of process.
-   addr: starting mapping address. */
+   addr: starting mapping address. (ordered by page) */
 int mmap (int fd, void *addr) {
   /* Check arguments:
         Error: return error
@@ -382,19 +393,25 @@ int mmap (int fd, void *addr) {
                create mm_file & initialize it
                create vm_entry & initialize it
                return mmId */
+  // printf("%p \n", addr);
   if (pg_ofs(addr) != 0 || !addr)
     return -1;
-  if (is_user_vaddr(addr) == false)
+  if (!is_user_vaddr(addr))
     return -1;
-
+  if (find_vm_entry(addr))
+    return -1;
+  // printf("mmap %p \n", addr);
   struct thread *cur = thread_current();
+  /* Even if close(), copy file object to maintain efficiency of mmap(). */
   struct file *file = file_reopen(get_file_descriptor(fd));
   struct mm_file *mm_file;
   size_t ofs = 0;
   int length;
+	size_t page_read_bytes;
+	size_t page_zero_bytes;
 
   mm_file = (struct mm_file *) malloc(sizeof(struct mm_file));
-  memset(mm_file, 0, sizeof(struct mm_file));
+  // memset(mm_file, 0, sizeof(struct mm_file));
   mm_file->file = file;
   mm_file->mmId = cur->next_mmId++;
   list_init (&mm_file->vmE_list);
@@ -402,29 +419,38 @@ int mmap (int fd, void *addr) {
 
   length = file_length(mm_file->file);
   while (length > 0) {
-    if (find_vm_entry(addr))
-      return -1;
+    // if (find_vm_entry(addr) == NULL)
+    //   return -1;
+    /* Calculate how to fill this page.
+         We will read PAGE_READ_BYTES bytes from FILE
+         and zero the final PAGE_ZERO_BYTES bytes. */
+    page_read_bytes = length < PGSIZE ? length : PGSIZE;
+		page_zero_bytes = PGSIZE - page_read_bytes;
     
     struct vm_entry *vmE = (struct vm_entry *) malloc(sizeof(struct vm_entry));
-    memset(vmE, 0, sizeof(struct vm_entry));
+    // memset(vmE, 0, sizeof(struct vm_entry));
+
+    /* initialize members of vm_entry. */
     vmE->type = VM_FILE;
     vmE->writable_flag = true;
+    vmE->load_flag = false;
     vmE->vaddr = addr;
     vmE->offset = ofs;
-    vmE->zero_bytes = 0;
+    vmE->zero_bytes = page_zero_bytes;
+    vmE->read_bytes = page_read_bytes;
     vmE->file = mm_file->file;
-    if (length < PGSIZE)
-      vmE->read_bytes = length;
-    else
-      vmE->read_bytes = PGSIZE;
 
     list_push_back (&mm_file->vmE_list, &vmE->mm_elem);
-    insert_vm_entry (&cur->vm, vmE);
+
+    if (!insert_vm_entry (&cur->vm, vmE)) {
+      printf("Insert_vm_entry invoke error!\n");
+    }
 
     addr += PGSIZE;
-    ofs += PGSIZE;
-    length -= PGSIZE;
+    ofs += page_read_bytes;
+    length -= page_read_bytes;
   }
+
   return mm_file->mmId;
 }
 
@@ -436,9 +462,11 @@ void munmap (int _mmId) {
                     remove mm_file
                     file_close. */
   struct list_elem *e;
-  for (e = list_begin (&thread_current ()->mm_list); e != list_end (&thread_current ()->mm_list); e = list_next (e)) {
+  // printf("%d \n",  list_size(&thread_current()->mm_list) );
+  for (e = list_begin (&thread_current()->mm_list); e != list_end (&thread_current()->mm_list); ) {
       struct mm_file *_mm_file = list_entry (e, struct mm_file, elem);
-      if (_mm_file->mmId == _mmId) {
+      e = list_next(e);
+      if (_mm_file->mmId == _mmId || _mmId == 1024) {
         do_munmap(_mm_file);
       }
   }
@@ -447,20 +475,25 @@ void munmap (int _mmId) {
 /* Remove all of vm_entry connected with vmE_list of mm_file. If physical page w.r.t. virtual address to vm_entry
    exists and dirty, record memory contents on disk. */
 void do_munmap (struct mm_file* _mm_file) {
-  ASSERT (_mm_file != NULL);
-
   struct list_elem *e;
+  // printf("%d \n",  list_size(&_mm_file->vmE_list) );
   for (e = list_begin (&_mm_file->vmE_list); e != list_end (&_mm_file->vmE_list); ) {
       struct vm_entry *vmE = list_entry (e, struct vm_entry, mm_elem);
-      if (vmE->load_flag && pagedir_is_dirty(thread_current()->pagedir, vmE->vaddr)) {
-          if (file_write_at (vmE->file, vmE->vaddr, vmE->read_bytes, vmE->offset) != (int) vmE->read_bytes)
-              NOT_REACHED ();
-          // free_page (pagedir_get_page (thread_current()->pagedir, vmE->vaddr));
+      if (vmE->load_flag) {
+        if (pagedir_is_dirty(thread_current()->pagedir, vmE->vaddr)) {
+          /* If physical page for virtual address w.r.t. vm_entry exists and is dirty, 
+             then write contents of memory into disk. */
+          file_write_at (vmE->file, vmE->vaddr, vmE->read_bytes, vmE->offset);
+        }
+        // pagedir_clear_page (thread_current()->pagedir, vmE->vaddr);
+        // palloc_free_page (pagedir_get_page (thread_current()->pagedir, vmE->vaddr)); 
       }
       vmE->load_flag = false;
       e = list_remove (e);
       delete_vm_entry (&thread_current()->vm, vmE);
   }
+
+  /* Remove mm_file. */
   list_remove (&_mm_file->elem);
   free (_mm_file);
 }

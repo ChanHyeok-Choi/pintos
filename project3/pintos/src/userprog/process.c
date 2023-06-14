@@ -322,16 +322,7 @@ process_exit (void)
   }
 
   /* Remove all of vm_entry w.r.t. mmId to mapping in mm_list. */
-  int mmId;
-  for (mmId = 1; mmId < cur->next_mmId; mmId++) {
-      struct list_elem *e;
-      for (e = list_begin (&thread_current ()->mm_list); e != list_end (&thread_current ()->mm_list); e = list_next (e)) {
-          struct mm_file *_mm_file = list_entry (e, struct mm_file, elem);
-          if (_mm_file->mmId == mmId) {
-            do_munmap(_mm_file);
-          }
-      }
-  }
+  munmap(1024);
 
   palloc_free_page(cur->file_descriptor_table);
   /* Desotry vm_entries. */

@@ -121,7 +121,7 @@ struct thread
     struct hash vm;                     /* Hash table managing virtual address space that thread has. */
 
     struct list mm_list;                /* List for files mapping memory. */
-    int next_mmId;                        /* Pointer to next mm. */
+    int next_mmId;                      /* Pointer to next mm. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
