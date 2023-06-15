@@ -483,7 +483,9 @@ void do_munmap (struct mm_file* _mm_file) {
         if (pagedir_is_dirty(thread_current()->pagedir, vmE->vaddr)) {
           /* If physical page for virtual address w.r.t. vm_entry exists and is dirty, 
              then write contents of memory into disk. */
+          lock_acquire(&filesys_lock);
           file_write_at (vmE->file, vmE->vaddr, vmE->read_bytes, vmE->offset);
+          lock_release(&filesys_lock);
         }
         // pagedir_clear_page (thread_current()->pagedir, vmE->vaddr);
         // palloc_free_page (pagedir_get_page (thread_current()->pagedir, vmE->vaddr)); 

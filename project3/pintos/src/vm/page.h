@@ -29,13 +29,6 @@
 #define VM_FILE 1
 #define VM_SWAP 2
 
-struct mm_file {
-   int mmId;               /* Once succeeded, returned mapping id. */
-   struct file* file;      /* File object of mapping file. */
-   struct list_elem elem;  /* Struct for connecting list of mm_files. */
-   struct list vmE_list;   /* List of all of vm_entry w.r.t. mm_file. */
-};
-
 /* Data structure that loads necessary pages by separating logical and physical addresses. */
 struct vm_entry {
    uint8_t type;              /* Type of VM_ELF, VM_FILE, and VM_SWAP. */
@@ -54,7 +47,26 @@ struct vm_entry {
    /* Memory Mapped File. */
    struct list_elem mm_elem;  /* mm list element. */
    /* Swapping. */
-   size_t swap_slot;          /* Swap slot. */
+   size_t swap_slot;          /* Swap slot. 4KB */
+};
+
+struct mm_file {
+   int mmId;               /* Once succeeded, returned mapping id. */
+   struct file* file;      /* File object of mapping file. */
+   struct list_elem elem;  /* Struct for connecting list of mm_files. */
+   struct list vmE_list;   /* List of all of vm_entry w.r.t. mm_file. */
+};
+
+/* Swapping: how to swap-in & out memory contents from & to disk.
+    Accessed bit in page table is set to 1 by HW whenever page is referenced.
+    Using it, we will implement clock algorithm based on LRU. 
+    In addition, we need to save a changed content into disk whenever a page with dirty bit 1
+    is selected with victim. Dirty bit in page table is set to 1 by HW whenever written to memory space. */
+struct page {
+   void *kaddr;            /* Physical address of page. */
+   struct vm_entry *vmE;   /* vm_entry pointer for virtual address mapped to physical page. */
+   struct thread *thread;  /* thread pointer for the physical page. */
+   struct list_elem LRU;   /* element for LRU list. */
 };
 
 void init_hash_for_vm (struct hash *vm);
