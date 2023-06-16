@@ -19,10 +19,31 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static bool install_page (void *upage, void *kpage, bool writable);
+
+/* Implement extendable stack. */
+/* When access to over-size address occurs, determine whether it is valid accessment
+   or segment fault:
+      On valid accessment:
+         extend stack (e.g., accessed address > stack pointer - 32): Maximum size = 8MB
+  */
+/* Check whether stack pointer is included in valid address. */
+bool determine_expandability (void *stack_ptr) {
+  void *limit = PHYS_BASE - 8388608; // 8MB
+  return pg_round_down(stack_ptr) >= limit;
+}
+
+/* Expand stack, including address upto 8MB. */
+bool expand_stack (void *addr) {
+  printf("%p \n", addr);
+  return false;
+}
 
 /* Implement handling function for page fault. */
 bool handle_page_fault (struct vm_entry *vmE) {
@@ -41,35 +62,43 @@ bool handle_page_fault (struct vm_entry *vmE) {
   if (vmE->load_flag) {
     return false;
   }
-  void *new_page = palloc_get_page(PAL_USER);
+  // void *new_page = palloc_get_page(PAL_USER);
+  struct page *new_page = page_alloc(PAL_USER);
+  new_page->vmE = vmE;
   if (new_page == NULL) {
     return false;
   }
   switch (vmE->type) {
     case VM_ELF:
-      if (!load_disk_page(new_page, vmE)) {
-        palloc_free_page(new_page);
+      if (!load_disk_page(new_page->kaddr, vmE)) {
+        // palloc_free_page(new_page);
+        free_page(new_page->kaddr);
         return false;
       }
       break;
     case VM_FILE:
-      if (!load_disk_page(new_page, vmE)) {
-        palloc_free_page(new_page);
+      if (!load_disk_page(new_page->kaddr, vmE)) {
+        // palloc_free_page(new_page);
+        free_page(new_page->kaddr);
         return false;
       }
       break;
     case VM_SWAP:
+      swap_in(vmE->swap_slot, new_page->kaddr);
       break;
     default:
-      palloc_free_page(new_page);
+      // palloc_free_page(new_page);
+      free_page(new_page->kaddr);
       return false;
   }
   /* Mapping virtual address with physical address. */
-  if (!install_page(vmE->vaddr, new_page, vmE->writable_flag)) {
-    palloc_free_page(new_page);
+  if (!install_page(vmE->vaddr, new_page->kaddr, vmE->writable_flag)) {
+    // palloc_free_page(new_page);
+    free_page(new_page->kaddr);
     return false;
   }
   vmE->load_flag = true;
+  // printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
   return true;
 }
 
@@ -689,18 +718,22 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
+  struct page *kpage;
   bool success = false;
   struct vm_entry *vmE;
   // printf("aaaaaaaaabbbbbbbbbb \n");
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  kpage = page_alloc(PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true);
       if (success)
         *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
+      else {
+        // palloc_free_page (kpage);
+        free_page(kpage->kaddr);
+        return success;
+      }
     }
 
   /* Create vm_entry of 4KB stack. */
@@ -711,6 +744,8 @@ setup_stack (void **esp)
   vmE->writable_flag = true;
   vmE->type = VM_SWAP;
   vmE->vaddr = pg_round_down(((uint8_t *) PHYS_BASE) - PGSIZE);
+  
+  kpage->vmE = vmE;
 
   /* Insert it into vm hash table by using insert_vm_entry(). */
   success = insert_vm_entry(&thread_current()->vm, vmE);

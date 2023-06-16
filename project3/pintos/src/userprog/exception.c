@@ -182,7 +182,6 @@ page_fault (struct intr_frame *f)
    /* Search vm_entry of page fault address by using check_user_space(). */
    vmE = check_user_space(fault_addr, f->esp); // fault_addr = 0xd?
    // printf("%p \n", vmE);
-
    if (vmE != NULL) {
       load_check = handle_page_fault(vmE);
       /* Inspect wehther loading file to phsyical memory and mapping are successful or not. */
@@ -193,6 +192,7 @@ page_fault (struct intr_frame *f)
    // printf("aaaaaaaaaaaaaaaaa0 %p \n", fault_addr);
 
    if (!load_check) {
+
       exit(-1);
    }
 }

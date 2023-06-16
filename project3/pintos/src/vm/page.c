@@ -9,6 +9,7 @@
 #include "threads/palloc.h"
 #include "userprog/pagedir.h"
 #include "filesys/file.h"
+#include "vm/frame.h"
 
 static unsigned hash_func_for_vm (const struct hash_elem *e, void *aux UNUSED);
 static bool less_func_for_vm (const struct hash_elem *h1, const struct hash_elem *h2);
@@ -55,6 +56,8 @@ bool delete_vm_entry (struct hash *vm, struct vm_entry *vmE) {
         success = false; /* Fail to do it. */
     } else {
         success = true; /* Deleting vm_entry from hash table is done. */
+        struct page* page = pagedir_get_page(thread_current()->pagedir, vmE->vaddr);
+        free_page(page);
         free(vmE);
     }
     return success;
@@ -80,9 +83,10 @@ void destroy_vm_func (struct hash_elem *e, void *aux UNUSED) {
     struct vm_entry *vmE = hash_entry(e, struct vm_entry, hash_elem);
     /* If vm_entry of a loaded page, free page and page mapping by palloc_free_page() and pagedir_clear_page(). */
     if (vmE->load_flag) {
-        void* page = pagedir_get_page(thread_current()->pagedir, vmE->vaddr);
-        palloc_free_page(page);
-        pagedir_clear_page(thread_current()->pagedir, vmE->vaddr);
+        struct page* page = pagedir_get_page(thread_current()->pagedir, vmE->vaddr);
+        // palloc_free_page(page);
+        // pagedir_clear_page(thread_current()->pagedir, vmE->vaddr);
+        free_page(page);
     }
     /* Free the allocated vm_entry object. */
     free(vmE);

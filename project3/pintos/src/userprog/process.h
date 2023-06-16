@@ -5,6 +5,8 @@
 #include "filesys/file.h"
 #include "vm/page.h"
 
+bool determine_expandability (void *stack_ptr);
+bool expand_stack (void *addr);
 bool handle_page_fault (struct vm_entry *vmE);
 /* Separate necessary functions doing task w.r.t. file_descriptor. */
 int add_file_descriptor(struct file *f);
