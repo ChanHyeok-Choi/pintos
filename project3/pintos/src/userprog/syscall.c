@@ -128,6 +128,7 @@ int write (int fd, const void *buffer, unsigned size) {
     f = get_file_descriptor(fd);
     /* Use lock to avoid concurrent access to file when read or write it. */
     if (f == NULL) {
+      // printf('asdfasdfas\n');
       return -1;
     }
     lock_acquire(&filesys_lock);
@@ -224,22 +225,30 @@ unsigned tell (int fd) {
 
 struct vm_entry* check_user_space (void *addr, void *stack_ptr UNUSED) {
   // ASSERT(is_user_vaddr(stack_ptr));
-  // if ((int)stack_ptr >= 0x8048000 || (unsigned int)stack_ptr <= 0xc0000000) {
+  if ((int)addr >= 0x8048000 || (unsigned int)addr <= 0xc0000000) {
+    // pass
+  } else {
+    // printf("%p %p \n", addr, stack_ptr);
+    exit(-1);
+  }
   if(is_user_vaddr(stack_ptr)) {
     // pass
   } else {
     exit(-1);
   }
-  if (pagedir_get_page(thread_current()->pagedir, stack_ptr) != NULL) {
-    // pass
-  } else {
-    exit(-1);
-  }
+  // page-linear error!
+  // if (pagedir_get_page(thread_current()->pagedir, stack_ptr) != NULL) {
+  //   // pass
+  // } else {
+  // printf("%p %p \n", addr, stack_ptr);
+  //   exit(-1);
+  // }
   /* If addr exists in vm_entry, return vm_entry by using find_vm_entry(). */
+  // printf("%p \n", addr);
   return find_vm_entry(addr);
 }
 
-/* Check whether buffer address is valid virtual address or not. It is applied to read() & write() system call. */
+/* Check whether buffer address is valid virtual address or not. It is applied to read() system call. */
 void check_valid_buffer (void *buffer, unsigned size, void *stack_ptr, bool writable) {
   struct vm_entry *vmE;
   char *buffer_i = (char *) buffer;
@@ -257,13 +266,14 @@ void check_valid_buffer (void *buffer, unsigned size, void *stack_ptr, bool writ
   }
 }
 
-/* Check whether string address in system call is valid or not. This is applied to exec() & open() system call. */
+/* Check whether string address in system call is valid or not. This is applied to write() & exec() & open() system call. */
 void check_valid_string (const void* str, void* stack_ptr) {
   char *str_i = (char *) str;
   struct vm_entry *vmE;
   while (*str_i != 0) {
     str_i++;
     vmE = check_user_space((void *) str_i, stack_ptr);
+    // printf("%p \n", stack_ptr);
     if (vmE == NULL)
       exit(-1);
   }
@@ -333,6 +343,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       copy_arguments(f->esp, args, 3);
       check_valid_buffer((void *) args[1], (unsigned) args[2], f->esp, true);
       f->eax = read(args[0], (void *) args[1], (unsigned) args[2]);
+      printf("%p \n", f->esp);
       break;
     case SYS_WRITE:
       copy_arguments(f->esp, args, 3);

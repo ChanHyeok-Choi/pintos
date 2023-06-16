@@ -56,9 +56,9 @@ bool delete_vm_entry (struct hash *vm, struct vm_entry *vmE) {
         success = false; /* Fail to do it. */
     } else {
         success = true; /* Deleting vm_entry from hash table is done. */
-        struct page* page = pagedir_get_page(thread_current()->pagedir, vmE->vaddr);
-        free_page(page);
-        free(vmE);
+        // struct page* page = pagedir_get_page(thread_current()->pagedir, vmE->vaddr);
+        // free_page(page);
+        // free(vmE);
     }
     return success;
 }
@@ -87,6 +87,7 @@ void destroy_vm_func (struct hash_elem *e, void *aux UNUSED) {
         // palloc_free_page(page);
         // pagedir_clear_page(thread_current()->pagedir, vmE->vaddr);
         free_page(page);
+        // free(vmE);
     }
     /* Free the allocated vm_entry object. */
     free(vmE);
@@ -100,6 +101,7 @@ bool load_disk_page(void* kaddr, struct vm_entry *vmE) {
     off_t disk_file = file_read_at(vmE->file, kaddr, vmE->read_bytes, vmE->offset);
     if ((int) vmE->read_bytes == disk_file) {
         memset(kaddr + vmE->read_bytes, 0, vmE->zero_bytes);
+        // printf("%p \n", kaddr);
         return true;
     }
     return false;

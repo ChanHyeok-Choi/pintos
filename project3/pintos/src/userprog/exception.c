@@ -179,9 +179,13 @@ page_fault (struct intr_frame *f)
    if (!not_present) {
       exit(-1);
    }
+   // if ((int) fault_addr < 0x8048000 || (unsigned int) fault_addr >= 0xc0000000) {
+   //    exit(-1);
+   // }
    /* Search vm_entry of page fault address by using check_user_space(). */
+   // printf("fault_addr: %p, stack pointer: %p \n", fault_addr, f->esp); // fault_addr: 0xcccccccc, stack pointer: 0xbffffe70 
    vmE = check_user_space(fault_addr, f->esp); // fault_addr = 0xd?
-   // printf("%p \n", vmE);
+   // printf("fault_addr: %p, vaddr: %p, stack pointer: %p\n", fault_addr, vmE->vaddr, f->esp); // fault_addr: 0xbffffe64, vaddr: 0xbffff000, stack pointer: 0xbffffe64
    if (vmE != NULL) {
       load_check = handle_page_fault(vmE);
       /* Inspect wehther loading file to phsyical memory and mapping are successful or not. */
@@ -190,9 +194,9 @@ page_fault (struct intr_frame *f)
       }
    }
    // printf("aaaaaaaaaaaaaaaaa0 %p \n", fault_addr);
+   // printf("%p \n", fault_addr);
 
    if (!load_check) {
-
       exit(-1);
    }
 }

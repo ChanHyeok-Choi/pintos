@@ -65,6 +65,7 @@ bool handle_page_fault (struct vm_entry *vmE) {
   // void *new_page = palloc_get_page(PAL_USER);
   struct page *new_page = page_alloc(PAL_USER);
   new_page->vmE = vmE;
+  // printf("kaddr: %p, vaddr: %p \n", new_page->kaddr, new_page->vmE->vaddr);
   if (new_page == NULL) {
     return false;
   }
@@ -84,6 +85,7 @@ bool handle_page_fault (struct vm_entry *vmE) {
       }
       break;
     case VM_SWAP:
+      /* If there is swap partition w.r.t. vm_entry, get it. */
       swap_in(vmE->swap_slot, new_page->kaddr);
       break;
     default:
@@ -98,6 +100,7 @@ bool handle_page_fault (struct vm_entry *vmE) {
     return false;
   }
   vmE->load_flag = true;
+  // printf("fault handler: %p \n", new_page->vmE->vaddr);
   // printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
   return true;
 }
@@ -342,6 +345,10 @@ process_exit (void)
 
   /* Current process close current executing file, automatically file_allow_write() done. */
   // Error: Kernel PANIC at ../../filesys/inode.c:336 in inode_allow_write(): assertion `inode->deny_write_cnt <= inode->open_cnt' failed.
+  
+  
+  // Error: Kernel PANIC at ../../filesys/inode.c:336 in inode_allow_write(): assertion `inode->deny_write_cnt <= inode->open_cnt' failed.
+  // Reason: After closing the file, try to close it again.
   file_close(cur->executing_file);
 
   /* Every opened file on process should be closed. */
@@ -710,6 +717,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       upage += PGSIZE;
     }
   // printf("load end~~\n");
+  // printf("%p \n", vmE->vaddr);
   return true;
 }
 
@@ -724,6 +732,7 @@ setup_stack (void **esp)
   // printf("aaaaaaaaabbbbbbbbbb \n");
   // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   kpage = page_alloc(PAL_USER | PAL_ZERO);
+  // printf("%p \n", kpage->kaddr);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true);
@@ -732,7 +741,6 @@ setup_stack (void **esp)
       else {
         // palloc_free_page (kpage);
         free_page(kpage->kaddr);
-        return success;
       }
     }
 
@@ -743,9 +751,11 @@ setup_stack (void **esp)
   vmE->load_flag = true;
   vmE->writable_flag = true;
   vmE->type = VM_SWAP;
-  vmE->vaddr = pg_round_down(((uint8_t *) PHYS_BASE) - PGSIZE);
+  vmE->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
   
   kpage->vmE = vmE;
+
+  // printf("vaddr: %p \n", kpage->vmE->vaddr);
 
   /* Insert it into vm hash table by using insert_vm_entry(). */
   success = insert_vm_entry(&thread_current()->vm, vmE);

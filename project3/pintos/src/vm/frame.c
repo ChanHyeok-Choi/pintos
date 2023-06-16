@@ -7,41 +7,43 @@
 #include "userprog/pagedir.h"
 #include "vm/swap.h"
 
-struct list LRU_list;           /* list of physical pages allocated to user process. */
-struct lock LRU_lock;           /* Lock for LRU. */
+struct list LRU_list;            /* list of physical pages allocated to user process. */
+struct lock LRU_lock;            /* Lock for LRU. */
 struct list_elem *clock_for_LRU; /* Element for clock algorithm. */
 
-static struct list_elem* get_next_LRU_clock(void);
+static struct list_elem *get_next_LRU_clock(void);
 
 /* Initialize LRU list. */
-void init_LRU_list (void) {
+void init_LRU_list(void) {
     list_init(&LRU_list);
     lock_init(&LRU_lock);
     clock_for_LRU = NULL;
 }
 
 /* Insert user page into end of LRU list. */
-void push_back_LRU_list (struct page* page) {
-    list_push_back (&LRU_list, &page->LRU);
+void push_back_LRU_list(struct page *page) {
+    list_push_back(&LRU_list, &page->LRU);
 }
 
 /* Remove user page from LRU list. */
-void pop_LRU_list (struct page* page) {
+void pop_LRU_list(struct page *page) {
     /* If element to remove is equal to clocking, update it to next element. */
     if (&page->LRU == clock_for_LRU) {
+        // printf("%p \n", clock_for_LRU);
         clock_for_LRU = list_next(clock_for_LRU);
     }
-    list_remove (&page->LRU);
+    list_remove(&page->LRU);
 }
 
 /* *** Need to change allocation function from palloc_get_page() to page_alloc(). *** */
 /* Whenever user page allocation or deletion, insert or remove relevant page to or from LRU list. */
-struct page* page_alloc (enum palloc_flags flags) {
+struct page *page_alloc(enum palloc_flags flags) {
     lock_acquire(&LRU_lock);
     uint8_t *kpage;
     /* Allocate page. */
     kpage = palloc_get_page(flags);
     /* When palloc_get_page() cannot allocate memory, call select_victim_out(). */
+    // printf("%p \n", kpage);
     while (kpage == NULL) {
         select_victim_out();
         kpage = palloc_get_page(flags);
@@ -51,23 +53,25 @@ struct page* page_alloc (enum palloc_flags flags) {
     struct page *page = (struct page *) malloc(sizeof(struct page));
     page->kaddr = kpage;
     page->thread = thread_current();
-    
+
     /* Insert page into LRU list by push_back_LRU_list(). */
     push_back_LRU_list(page);
 
     lock_release(&LRU_lock);
-    
+    // printf("kaddr: %p, malloc: %p \n", page->kaddr, page);
+
     return page;
 }
 
-void free_page (void *_kaddr) {
+void free_page(void *_kaddr) {
     lock_acquire(&LRU_lock);
     /* Search page w.r.t. kaddr in LRU list. */
     struct list_elem *e;
-    for (e = list_begin(&LRU_list); e != list_end(&LRU_list); e = list_next(e)) {
+    for (e = list_begin(&LRU_list); e != list_end(&LRU_list); e = list_next(e))     {
         struct page *current_page = list_entry(e, struct page, LRU);
         /* If matching found, call free_LRU_page. */
         if (current_page->kaddr == _kaddr) {
+            // printf("%p \n", _kaddr);
             free_LRU_page(current_page);
             break;
         }
@@ -76,7 +80,7 @@ void free_page (void *_kaddr) {
     lock_release(&LRU_lock);
 }
 
-void free_LRU_page (struct page* page) {
+void free_LRU_page(struct page *page) {
     /* Remove page from LRU. */
     pop_LRU_list(page);
     /* Free memory space allocated to page. */
@@ -86,7 +90,7 @@ void free_LRU_page (struct page* page) {
     free(page);
 }
 
-static struct list_elem* get_next_LRU_clock (void) {
+static struct list_elem *get_next_LRU_clock(void) {
     /* To do task moving next through LRU list by clock algorithm. */
     /* Return a location of next of LRU list. If current LRU list is a last node, return NULL. */
     // if (list_empty(&LRU_list) || clock_for_LRU == list_end(&LRU_list))
@@ -96,29 +100,32 @@ static struct list_elem* get_next_LRU_clock (void) {
     if (list_empty(&LRU_list))
         return NULL;
 
-    if (clock_for_LRU == NULL || clock_for_LRU == list_end(&LRU_list))
+    /* CLOCK-WISE! */
+    if (clock_for_LRU == NULL || clock_for_LRU == list_end(&LRU_list)) {
         return list_begin(&LRU_list);
-    
-    if (list_end(&LRU_list) == list_next(clock_for_LRU))
-        return list_begin(&LRU_list);
-    else
-        return list_next(clock_for_LRU);
+    }
 
-    return clock_for_LRU;
+    if (list_end(&LRU_list) == list_next(clock_for_LRU)) {
+        return list_begin(&LRU_list);
+    }
+
+    return list_next(clock_for_LRU);
 }
 
 /* When there is not enough physical memory, retain spare memory by clock algorithm.
    Select victim page by clock algorithm, and release it out, then return the virtual address
    of spare page. */
-void select_victim_out (void) {
-    /* Search. */
+void select_victim_out(void) {
+    /* Search victim clock-wise. */
     clock_for_LRU = get_next_LRU_clock();
     struct page *page = list_entry(clock_for_LRU, struct page, LRU);
     while (pagedir_is_accessed(page->thread->pagedir, page->vmE->vaddr)) {
+        /* Set to 0, move to next. */
         pagedir_set_accessed(page->thread->pagedir, page->vmE->vaddr, false);
         clock_for_LRU = get_next_LRU_clock();
         page = list_entry(clock_for_LRU, struct page, LRU);
     }
+    // printf("swapping victim: %p, vaddr: %p \n", page, page->vmE->vaddr);
 
     /* Release phsycal memory will be different according to vm_entry's type. */
     switch (page->vmE->type) {
@@ -134,10 +141,12 @@ void select_victim_out (void) {
             }
             break;
         case VM_SWAP: /* Always write it into swap partition. */
+            // printf("%p \n", page->kaddr);
             page->vmE->swap_slot = swap_out(page->kaddr);
             break;
     }
 
+    /* free page. */
     page->vmE->load_flag = false;
     free_LRU_page(page);
 }

@@ -179,6 +179,10 @@ Actually, we failed to implement the relevant code. But, we can design as follow
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
+We used a single lock for synchronization and to prevent deadlock. Also,
+we used clock algorithm based on LRU by list and lock. For managing swap partition,
+spare swap slot will be searched by first-fit algorithm.
+
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
@@ -193,6 +197,9 @@ a frame pr faulting a page.
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
+
+When finding victim, we used clock algorithm. If accessed bit is set to 1, pass it and set to 0,
+otherwise, choose it for victim. By doing this, we can avoid the above situation.
 
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
