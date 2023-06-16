@@ -343,7 +343,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       copy_arguments(f->esp, args, 3);
       check_valid_buffer((void *) args[1], (unsigned) args[2], f->esp, true);
       f->eax = read(args[0], (void *) args[1], (unsigned) args[2]);
-      printf("%p \n", f->esp);
+      // printf("%p \n", f->esp);
       break;
     case SYS_WRITE:
       copy_arguments(f->esp, args, 3);
